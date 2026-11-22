@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.4 | GitHub Module | Aimbot + Silent Aim + Rage + ESP + Skin 3D + Configs
+-- ASTRAL HUB v2.4 | GitHub Module | Aimbot + Silent Aim v2 + Rage + Smooth ESP + Skin 3D + Configs
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -147,6 +147,7 @@ local DEFAULT_STATE = {
 	InfoESP = true,
 	ESPTeamCheck = true,
 	ESPMaxDist = 900,
+	ESPSmoothness = 0.35,
 
 	BlurEnabled = true,
 	BlurSize = 14,
@@ -233,11 +234,9 @@ local function isTeammate(plr, enabled)
 	if not enabled or not plr or plr == LocalPlayer then
 		return false
 	end
-	-- Если у обоих есть Team объект — сравниваем по нему
 	if LocalPlayer.Team and plr.Team then
 		return plr.Team == LocalPlayer.Team
 	end
-	-- Если хотя бы у одного нет команды — не тиммейты
 	if not LocalPlayer.Team or not plr.Team then
 		return false
 	end
@@ -1195,6 +1194,7 @@ addToggle(espPage, "Skeleton ESP", "Линии по суставам и част
 addToggle(espPage, "Name + HP + Distance", "Имя, здоровье и дистанция", State.InfoESP, 8, function(v) State.InfoESP = v end, "InfoESP")
 addToggle(espPage, "ESP Team Check", "Скрывать игроков своей команды", State.ESPTeamCheck, 9, function(v) State.ESPTeamCheck = v end, "ESPTeamCheck")
 addSlider(espPage, "Max ESP Distance", 100, 2500, State.ESPMaxDist, 50, 10, function(v) State.ESPMaxDist = v end, "ESPMaxDist")
+addSlider(espPage, "ESP Smoothness", 0.08, 1.0, State.ESPSmoothness, 0.02, 11, function(v) State.ESPSmoothness = v end, "ESPSmoothness")
 
 -- 3D Skin Viewer
 addSection(skinPage, "3D просмотр вашего скина (тяните мышкой)", 1)
@@ -1829,7 +1829,7 @@ LocalPlayer.Idled:Connect(function()
 	end
 end)
 
--- ESP
+-- Smooth ESP
 local espLayer = Instance.new("Frame")
 espLayer.Name = "AstralESPOverlay"
 espLayer.Size = UDim2.new(1, 0, 1, 0)
@@ -1892,11 +1892,18 @@ local function createESPSet()
 		C_BR_V = corners[8],
 		Tracer = tracer,
 		Tag = tag,
-		Bones = bones
+		Bones = bones,
+		HasSmooth = false,
+		SmoothTL = Vector2.zero,
+		SmoothSize = Vector2.zero,
+		SmoothCenter = Vector2.zero,
+		SmoothBot = Vector2.zero,
+		SmoothBones = {}
 	}
 end
 
 local function hideESPSet(s)
+	s.HasSmooth = false
 	s.Box.Visible = false
 	s.C_TL_H.Visible = false
 	s.C_TL_V.Visible = false
@@ -1972,7 +1979,7 @@ local function drawCornerBox(s, topLeft, size, col)
 	drawLine(s.C_BR_V, br - Vector2.new(0, ch), br, t, col)
 end
 
--- FOV Circles & Silent Aim Hooks
+-- FOV Circles & Silent Aim v2 Hooks
 local fovCircle = Instance.new("Frame")
 fovCircle.Name = "AimbotFOVCircle"
 fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1995,6 +2002,7 @@ local lockedPart = nil
 local silentTargetPart = nil
 local silentTargetPos = nil
 local silentTargetPlayerName = "None"
+local silentRollCycle = 0
 
 local lastShot = 0
 local lastRapidShot = 0
@@ -2071,7 +2079,14 @@ local function getSilentBodyPoint(char, partMode)
 	return fallback, fallback and fallback.Position or nil
 end
 
-local function updateSilentTarget(mousePos)
+local function getAimReferenceScreenPos(mousePos, vp)
+	if UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter then
+		return Vector2.new(vp.X * 0.5, vp.Y * 0.5)
+	end
+	return mousePos
+end
+
+local function updateSilentTarget(refPos)
 	if not State.HubReady or not State.SilentEnabled then
 		silentTargetPart = nil
 		silentTargetPos = nil
@@ -2082,7 +2097,7 @@ local function updateSilentTarget(mousePos)
 	local bestPart = nil
 	local bestPos = nil
 	local bestName = "None"
-	local bestDist = State.SilentFOVRadius
+	local bestScore = math.huge
 
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer and not isTeammate(plr, State.SilentTeamCheck) then
@@ -2090,14 +2105,24 @@ local function updateSilentTarget(mousePos)
 			if alive and plr.Character then
 				local part, pointPos = getSilentBodyPoint(plr.Character, State.SilentPart)
 				if part and pointPos then
-					local sp, onScreen = Camera:WorldToViewportPoint(pointPos)
+					local predictedPos = pointPos + (part.AssemblyLinearVelocity * State.SilentPrediction)
+					local sp, onScreen = Camera:WorldToViewportPoint(predictedPos)
 					if onScreen and sp.Z > 0 then
-						local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
-						if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, State.SilentWallCheck) then
-							bestDist = d
-							bestPart = part
-							bestPos = pointPos + (part.AssemblyLinearVelocity * State.SilentPrediction)
-							bestName = plr.Name
+						local screenD = (Vector2.new(sp.X, sp.Y) - refPos).Magnitude
+						if screenD <= State.SilentFOVRadius then
+							local checkOrigin = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head"))
+								and LocalPlayer.Character.Head.Position
+								or Camera.CFrame.Position
+							if canSeePart(checkOrigin, part, plr.Character, State.SilentWallCheck) then
+								local worldDist = (predictedPos - Camera.CFrame.Position).Magnitude
+								local score = screenD + (worldDist * 0.12)
+								if score < bestScore then
+									bestScore = score
+									bestPart = part
+									bestPos = predictedPos
+									bestName = plr.Name
+								end
+							end
 						end
 					end
 				end
@@ -2110,11 +2135,28 @@ local function updateSilentTarget(mousePos)
 	silentTargetPlayerName = bestName
 end
 
-local function passHitChance()
+local function shouldApplySilentHit()
+	if not State.HubReady or not State.SilentEnabled or not silentTargetPos or not silentTargetPart then
+		return false
+	end
+	if not silentTargetPart.Parent then
+		return false
+	end
 	if State.SilentHitChance >= 100 then
 		return true
 	end
-	return math.random(1, 100) <= State.SilentHitChance
+	silentRollCycle = (silentRollCycle + 1) % 100
+	return (silentRollCycle + 1) <= State.SilentHitChance
+end
+
+local function getSilentOrigin(rawOrigin)
+	if typeof(rawOrigin) == "Vector3" then
+		local distFromCam = (rawOrigin - Camera.CFrame.Position).Magnitude
+		if distFromCam <= 24 then
+			return rawOrigin
+		end
+	end
+	return Camera.CFrame.Position
 end
 
 if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "function" then
@@ -2123,19 +2165,23 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 		local method = getnamecallmethod()
 		local args = { ... }
 
-		if State.HubReady and State.SilentEnabled and silentTargetPos and silentTargetPart and not checkcaller() then
+		if not checkcaller() and shouldApplySilentHit() then
 			if self == Workspace and method == "Raycast" and typeof(args[1]) == "Vector3" and typeof(args[2]) == "Vector3" then
-				if passHitChance() then
-					local origin = args[1]
-					local dist = math.max(args[2].Magnitude, (silentTargetPos - origin).Magnitude + 5)
-					args[2] = (silentTargetPos - origin).Unit * dist
+				local origin = getSilentOrigin(args[1])
+				local targetVec = silentTargetPos - origin
+				if targetVec.Magnitude > 1e-3 then
+					local scale = math.max(args[2].Magnitude / targetVec.Magnitude, 1.05)
+					args[1] = origin
+					args[2] = targetVec.Unit * (targetVec.Magnitude * scale + 4)
 					return oldNamecall(self, unpack(args))
 				end
 			elseif self == Workspace and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay") and typeof(args[1]) == "Ray" then
-				if passHitChance() then
-					local origin = args[1].Origin
-					local dist = math.max(args[1].Direction.Magnitude, (silentTargetPos - origin).Magnitude + 5)
-					args[1] = Ray.new(origin, (silentTargetPos - origin).Unit * dist)
+				local rawRay = args[1]
+				local origin = getSilentOrigin(rawRay.Origin)
+				local targetVec = silentTargetPos - origin
+				if targetVec.Magnitude > 1e-3 then
+					local rayLen = math.max(rawRay.Direction.Magnitude, targetVec.Magnitude + 4)
+					args[1] = Ray.new(origin, targetVec.Unit * rayLen)
 					return oldNamecall(self, unpack(args))
 				end
 			end
@@ -2146,11 +2192,17 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 
 	local oldIndex
 	oldIndex = hookmetamethod(game, "__index", function(self, key)
-		if State.HubReady and State.SilentEnabled and silentTargetPos and silentTargetPart and self == Mouse and not checkcaller() then
-			if key == "Hit" and passHitChance() then
+		if not checkcaller() and shouldApplySilentHit() and self == Mouse then
+			if key == "Hit" then
 				return CFrame.new(silentTargetPos)
-			elseif key == "Target" and passHitChance() then
+			elseif key == "Target" then
 				return silentTargetPart
+			elseif key == "UnitRay" then
+				local origin = Camera.CFrame.Position
+				local dir = (silentTargetPos - origin)
+				if dir.Magnitude > 1e-3 then
+					return Ray.new(origin, dir.Unit)
+				end
 			end
 		end
 		return oldIndex(self, key)
@@ -2235,6 +2287,25 @@ local function findAimTarget(mousePos)
 	return best
 end
 
+local function aimCameraAt(worldPos, alpha)
+	if not Camera then
+		return
+	end
+	local camPos = Camera.CFrame.Position
+	if (worldPos - camPos).Magnitude < 1e-4 then
+		return
+	end
+	if Camera.CameraType == Enum.CameraType.Scriptable then
+		Camera.CameraType = Enum.CameraType.Custom
+	end
+	local goalCF = CFrame.lookAt(camPos, worldPos)
+	if alpha and alpha < 1 then
+		Camera.CFrame = Camera.CFrame:Lerp(goalCF, math.clamp(alpha, 0.02, 1))
+	else
+		Camera.CFrame = goalCF
+	end
+end
+
 local function buildActiveSummary()
 	local tags = {}
 	if State.AimEnabled then table.insert(tags, "AIM") end
@@ -2277,8 +2348,9 @@ RunService.RenderStepped:Connect(function(dt)
 
 	local mousePos = UserInputService:GetMouseLocation()
 	local vp = Camera.ViewportSize
+	local silentRefPos = getAimReferenceScreenPos(mousePos, vp)
 
-	updateSilentTarget(mousePos)
+	updateSilentTarget(silentRefPos)
 
 	chHolder.Visible = State.HubReady and State.CrosshairEnabled
 	if chHolder.Visible then
@@ -2305,7 +2377,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if silentFovCircle.Visible then
 		local sDiam = State.SilentFOVRadius * 2
 		silentFovCircle.Size = UDim2.new(0, sDiam, 0, sDiam)
-		silentFovCircle.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
+		silentFovCircle.Position = UDim2.new(0, silentRefPos.X, 0, silentRefPos.Y)
 		silentFovStroke.Color = silentTargetPart and Theme.Success or Theme.SilentAccent
 	end
 
@@ -2489,10 +2561,9 @@ RunService.RenderStepped:Connect(function(dt)
 
 			if State.AimEnabled and ((not State.AimHoldOnly) or rmb) then
 				if State.AimMode == "Camera" then
-					local goalCF = CFrame.lookAt(Camera.CFrame.Position, predicted)
-					Camera.CFrame = Camera.CFrame:Lerp(goalCF, math.clamp(State.Smoothness, 0.02, 1))
+					aimCameraAt(predicted, State.Smoothness)
 				elseif State.AimMode == "Snap" then
-					Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predicted)
+					aimCameraAt(predicted, 1)
 				elseif State.AimMode == "Triggerbot" then
 					local sp, onScreen = Camera:WorldToViewportPoint(predicted)
 					if onScreen and sp.Z > 0 then
@@ -2527,7 +2598,10 @@ RunService.RenderStepped:Connect(function(dt)
 	if espStepAccum < espInterval then
 		return
 	end
+	local stepDt = math.clamp(espStepAccum, 1 / 240, 0.1)
 	espStepAccum = 0
+
+	local espAlpha = math.clamp(State.ESPSmoothness * (stepDt * 60), 0.04, 1)
 
 	local tracerOrigin = Vector2.new(vp.X * 0.5, vp.Y)
 	if State.TracerOrigin == "Center" then
@@ -2583,8 +2657,26 @@ RunService.RenderStepped:Connect(function(dt)
 						local botSP = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3.1, 0))
 						local h = math.max(math.abs(botSP.Y - topSP.Y), 16)
 						local w = math.max(h * 0.58, 12)
-						local tl = Vector2.new(rootSP.X - w * 0.5, topSP.Y)
-						local sz = Vector2.new(w, h)
+						local targetTL = Vector2.new(rootSP.X - w * 0.5, topSP.Y)
+						local targetSz = Vector2.new(w, h)
+						local targetCenter = Vector2.new(rootSP.X, targetTL.Y - 13)
+						local targetBot = Vector2.new(rootSP.X, botSP.Y)
+
+						if not s.HasSmooth then
+							s.HasSmooth = true
+							s.SmoothTL = targetTL
+							s.SmoothSize = targetSz
+							s.SmoothCenter = targetCenter
+							s.SmoothBot = targetBot
+						else
+							s.SmoothTL = s.SmoothTL:Lerp(targetTL, espAlpha)
+							s.SmoothSize = s.SmoothSize:Lerp(targetSz, espAlpha)
+							s.SmoothCenter = s.SmoothCenter:Lerp(targetCenter, espAlpha)
+							s.SmoothBot = s.SmoothBot:Lerp(targetBot, espAlpha)
+						end
+
+						local tl = s.SmoothTL
+						local sz = s.SmoothSize
 						local col = (silentTargetPlayerName == plr.Name) and Theme.SilentAccent or Theme.AccentBright
 
 						if State.BoxESP then
@@ -2609,7 +2701,7 @@ RunService.RenderStepped:Connect(function(dt)
 						end
 
 						if State.TracerESP then
-							drawLine(s.Tracer, tracerOrigin, Vector2.new(rootSP.X, botSP.Y), 1.4, col)
+							drawLine(s.Tracer, tracerOrigin, s.SmoothBot, 1.4, col)
 						else
 							s.Tracer.Visible = false
 						end
@@ -2618,7 +2710,7 @@ RunService.RenderStepped:Connect(function(dt)
 							local hpPct = math.clamp(math.floor((hum.Health / math.max(hum.MaxHealth, 1)) * 100 + 0.5), 0, 100)
 							s.Tag.Text = string.format(" %s | %d%% HP | %dm ", plr.Name, hpPct, math.floor(dist3D))
 							s.Tag.Size = UDim2.new(0, math.max(#s.Tag.Text * 6 + 10, 80), 0, 18)
-							s.Tag.Position = UDim2.new(0, rootSP.X - s.Tag.Size.X.Offset * 0.5, 0, tl.Y - 22)
+							s.Tag.Position = UDim2.new(0, s.SmoothCenter.X - s.Tag.Size.X.Offset * 0.5, 0, s.SmoothCenter.Y)
 							s.Tag.Visible = true
 						else
 							s.Tag.Visible = false
@@ -2636,23 +2728,49 @@ RunService.RenderStepped:Connect(function(dt)
 							local lLeg = plr.Character:FindFirstChild("LeftUpperLeg") or plr.Character:FindFirstChild("Left Leg")
 							local rLeg = plr.Character:FindFirstChild("RightUpperLeg") or plr.Character:FindFirstChild("Right Leg")
 
-							local idx = 1
-							local function linkBone(a, b)
-								if a and b and idx <= #s.Bones then
-									local sA, vA = Camera:WorldToViewportPoint(a.Position)
-									local sB, vB = Camera:WorldToViewportPoint(b.Position)
-									if vA and vB and sA.Z > 0 and sB.Z > 0 then
-										drawLine(s.Bones[idx], Vector2.new(sA.X, sA.Y), Vector2.new(sB.X, sB.Y), 1.5, Theme.TextMain)
-										idx += 1
+							local joints = {
+								head and head.Position or nil,
+								torso and torso.Position or nil,
+								lArm and lArm.Position or nil,
+								rArm and rArm.Position or nil,
+								lLeg and lLeg.Position or nil,
+								rLeg and rLeg.Position or nil
+							}
+							local proj = {}
+							for jIdx, wPos in ipairs(joints) do
+								if wPos then
+									local jSP, jVis = Camera:WorldToViewportPoint(wPos)
+									if jVis and jSP.Z > 0 then
+										local rawV = Vector2.new(jSP.X, jSP.Y)
+										if not s.SmoothBones[jIdx] then
+											s.SmoothBones[jIdx] = rawV
+										else
+											s.SmoothBones[jIdx] = s.SmoothBones[jIdx]:Lerp(rawV, espAlpha)
+										end
+										proj[jIdx] = s.SmoothBones[jIdx]
+									else
+										s.SmoothBones[jIdx] = nil
 									end
+								else
+									s.SmoothBones[jIdx] = nil
 								end
 							end
 
-							linkBone(head, torso)
-							linkBone(torso, lArm)
-							linkBone(torso, rArm)
-							linkBone(torso, lLeg)
-							linkBone(torso, rLeg)
+							local idx = 1
+							local function linkBone(aIdx, bIdx)
+								local pA = proj[aIdx]
+								local pB = proj[bIdx]
+								if pA and pB and idx <= #s.Bones then
+									drawLine(s.Bones[idx], pA, pB, 1.5, Theme.TextMain)
+									idx += 1
+								end
+							end
+
+							linkBone(1, 2)
+							linkBone(2, 3)
+							linkBone(2, 4)
+							linkBone(2, 5)
+							linkBone(2, 6)
 						end
 					end
 				end
@@ -2733,5 +2851,5 @@ task.spawn(function()
 	end
 
 	setHub(true, false)
-	pushNotify("ASTRAL HUB загружен", "Откат на v2.4 выполнен. Меню: RightShift")
+	pushNotify("ASTRAL HUB загружен", "Обновлённый Silent Aim v2 активен. Меню: RightShift")
 end)
