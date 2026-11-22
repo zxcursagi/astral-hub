@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.5.1 | GitHub Module | Fixed BrickColor.Neutral in isTeammate + ESP & Aimbot + Rage Wallbang
+-- ASTRAL HUB v2.3 | GitHub Module | Aimbot + Silent Aim + Rage Wallbang + ESP + 3D Skin + Configs
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -233,48 +233,6 @@ local function applyGravity(enabled, val)
 	Workspace.Gravity = enabled and val or origGravity
 end
 
-local NEUTRAL_BRICK = BrickColor.new("Medium stone grey")
-
-local function isTeammate(plr, enabled)
-	if not enabled or not plr or plr == LocalPlayer then
-		return false
-	end
-	if LocalPlayer.Team ~= nil and plr.Team ~= nil then
-		return plr.Team == LocalPlayer.Team
-	end
-	if LocalPlayer.TeamColor ~= nil and plr.TeamColor ~= nil then
-		if LocalPlayer.TeamColor ~= NEUTRAL_BRICK and plr.TeamColor ~= NEUTRAL_BRICK then
-			return plr.TeamColor == LocalPlayer.TeamColor
-		end
-	end
-	return false
-end
-
-local function getRootPart(char)
-	if not char then
-		return nil
-	end
-	return char:FindFirstChild("HumanoidRootPart")
-		or char:FindFirstChild("UpperTorso")
-		or char:FindFirstChild("Torso")
-		or char:FindFirstChildWhichIsA("BasePart")
-end
-
-local function getAliveParts(char)
-	if not char or not char.Parent then
-		return false, nil, nil
-	end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	local hrp = getRootPart(char)
-	if not hum or not hrp then
-		return false, nil, nil
-	end
-	if hum.Health <= 0 then
-		return false, hum, hrp
-	end
-	return true, hum, hrp
-end
-
 local function addCorner(obj, radius)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, radius)
@@ -397,7 +355,7 @@ local splashTag = Instance.new("TextLabel")
 splashTag.Size = UDim2.new(1, -32, 0, 20)
 splashTag.Position = UDim2.new(0, 16, 0, 18)
 splashTag.BackgroundTransparency = 1
-splashTag.Text = "✦ ASTRAL HUB  •  v2.5.1"
+splashTag.Text = "✦ ASTRAL HUB  •  v2.3"
 splashTag.TextColor3 = Theme.AccentBright
 splashTag.Font = Enum.Font.GothamBold
 splashTag.TextSize = 11
@@ -1864,7 +1822,7 @@ local espLayer = Instance.new("Frame")
 espLayer.Name = "AstralESPOverlay"
 espLayer.Size = UDim2.new(1, 0, 1, 0)
 espLayer.BackgroundTransparency = 1
-espLayer.ZIndex = 2
+espLayer.ZIndex = 1
 espLayer.Parent = gui
 
 local espPool = {}
@@ -1874,7 +1832,6 @@ local function makeLine()
 	f.BackgroundColor3 = Theme.AccentBright
 	f.BorderSizePixel = 0
 	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.ZIndex = 2
 	f.Visible = false
 	f.Parent = espLayer
 	return f
@@ -1884,7 +1841,6 @@ local function createESPSet()
 	local box = Instance.new("Frame")
 	box.BackgroundColor3 = Theme.Accent
 	box.BackgroundTransparency = 0.88
-	box.ZIndex = 2
 	box.Visible = false
 	box.Parent = espLayer
 	addStroke(box, Theme.AccentBright, 1.4, 0.1)
@@ -1903,7 +1859,6 @@ local function createESPSet()
 	tag.Font = Enum.Font.GothamBold
 	tag.TextSize = 10
 	tag.TextStrokeTransparency = 0.5
-	tag.ZIndex = 3
 	tag.Visible = false
 	tag.Parent = espLayer
 	addCorner(tag, 5)
@@ -2156,7 +2111,7 @@ local function getSilentBodyPoint(char, partMode)
 			return head, head.Position - Vector3.new(0, 0.35, 0)
 		end
 	elseif partMode == "Torso" then
-		local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or getRootPart(char)
+		local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
 		if torso then
 			return torso, torso.Position
 		end
@@ -2177,7 +2132,7 @@ local function getSilentBodyPoint(char, partMode)
 			return leg, leg.Position
 		end
 	end
-	local fallback = char:FindFirstChild("Head") or getRootPart(char)
+	local fallback = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
 	return fallback, fallback and fallback.Position or nil
 end
 
@@ -2287,11 +2242,36 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 	end)
 end
 
+local function isTeammate(plr, enabled)
+	if not enabled or not plr or plr == LocalPlayer then
+		return false
+	end
+	if LocalPlayer.Team and plr.Team then
+		return plr.Team == LocalPlayer.Team
+	end
+	if LocalPlayer.TeamColor and plr.TeamColor and not LocalPlayer.TeamColor.Neutral and not plr.TeamColor.Neutral then
+		return plr.TeamColor == LocalPlayer.TeamColor
+	end
+	return false
+end
+
+local function getAliveParts(char)
+	if not char or not char.Parent then
+		return false, nil, nil
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hum or not hrp or hum.Health <= 0 then
+		return false, hum, hrp
+	end
+	return true, hum, hrp
+end
+
 local function selectTargetPart(char, mousePos)
 	if State.TargetPartMode == "Head" then
-		return char:FindFirstChild("Head") or getRootPart(char)
+		return char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
 	elseif State.TargetPartMode == "HumanoidRootPart" then
-		return getRootPart(char)
+		return char:FindFirstChild("HumanoidRootPart")
 	else
 		local bestPart = nil
 		local bestDist = math.huge
@@ -2307,7 +2287,7 @@ local function selectTargetPart(char, mousePos)
 				end
 			end
 		end
-		return bestPart or getRootPart(char)
+		return bestPart or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
 	end
 end
 
@@ -2821,7 +2801,7 @@ task.spawn(function()
 	loadConfig(State.ConfigProfile, true)
 	task.wait(0.26)
 
-	setSplashProgress(58, "Фикс team-check, ESP и Aimbot...")
+	setSplashProgress(58, "Инициализация Aimbot, Silent Aim и ESP...")
 	applyCompactMode(State.CompactMode)
 	sideBar.Visible = true
 	bodyArea.Visible = true
@@ -2869,5 +2849,5 @@ task.spawn(function()
 	end
 
 	setHub(true, false)
-	pushNotify("ASTRAL HUB загружен", "Ошибка в isTeammate исправлена. Меню: RightShift")
+	pushNotify("ASTRAL HUB v2.3 загружен", "Откат выполнен. Меню: RightShift")
 end)
