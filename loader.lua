@@ -1,64 +1,58 @@
 --!nocheck
--- ASTRAL HUB | GitHub Loader
--- Замени OWNER и REPO на свои данные репозитория
+-- ASTRAL HUB | Direct GitHub Launcher (zxcursagi/astral-hub)
 
-local GITHUB_OWNER = "zxcursagi"
-local GITHUB_REPO = "astral-hub"
-local GITHUB_BRANCH = "main"
-local SCRIPT_PATH = "AstralHub.lua"
+local URL = "https://raw.githubusercontent.com/zxcursagi/astral-hub/main/AstralHub.lua"
 
-local RAW_URL = string.format(
-	"https://raw.githubusercontent.com/%s/%s/%s/%s",
-	GITHUB_OWNER,
-	GITHUB_REPO,
-	GITHUB_BRANCH,
-	SCRIPT_PATH
-)
-
-local function notifyFallback(title, text)
-	pcall(function()
-		game:GetService("StarterGui"):SetCore("SendNotification", {
-			Title = title,
-			Text = text,
-			Duration = 4
-		})
-	end)
+if getgenv then
+	getgenv().ASTRAL_HUB_LOADED = false
 end
 
-if getgenv and getgenv().ASTRAL_HUB_LOADED then
-	notifyFallback("ASTRAL HUB", "Скрипт уже загружен в этом сеансе.")
-	return
-end
-
-local function fetchSource(url, attempts)
-	attempts = attempts or 3
-	for i = 1, attempts do
-		local ok, body = pcall(function()
-			return game:HttpGet(url .. "?v=" .. tostring(os.clock()))
-		end)
-		if ok and type(body) == "string" and #body > 100 then
-			return true, body
+local function fetchModule(url)
+	local methods = {
+		function()
+			return type(game.HttpGet) == "function" and game:HttpGet(url, true)
+		end,
+		function()
+			return type(game.HttpGet) == "function" and game:HttpGet(url)
+		end,
+		function()
+			return type(http_get) == "function" and http_get(url)
+		end,
+		function()
+			if syn and type(syn.request) == "function" then
+				local res = syn.request({ Url = url, Method = "GET" })
+				return res and res.Body
+			end
+		end,
+		function()
+			local req = (type(request) == "function" and request)
+				or (type(http) == "table" and type(http.request) == "function" and http.request)
+			if req then
+				local res = req({ Url = url, Method = "GET" })
+				return res and (res.Body or res.body)
+			end
 		end
-		if i < attempts then
-			task.wait(0.6)
+	}
+
+	for _, fn in ipairs(methods) do
+		local ok, data = pcall(fn)
+		if ok and type(data) == "string" and #data > 0 then
+			return data
 		end
 	end
-	return false, "Не удалось скачать скрипт с GitHub"
+
+	return nil
 end
 
-notifyFallback("ASTRAL HUB", "Загрузка модуля с GitHub...")
-
-local okFetch, sourceOrErr = fetchSource(RAW_URL, 3)
-if not okFetch then
-	notifyFallback("ASTRAL HUB • Error", tostring(sourceOrErr))
-	warn("[ASTRAL HUB Loader] " .. tostring(sourceOrErr))
+local source = fetchModule(URL)
+if not source then
+	warn("[ASTRAL HUB] Failed to fetch module from GitHub.")
 	return
 end
 
-local fn, compileErr = loadstring(sourceOrErr)
-if type(fn) ~= "function" then
-	notifyFallback("ASTRAL HUB • Syntax Error", "Ошибка компиляции модуля")
-	warn("[ASTRAL HUB Loader] Compile error: " .. tostring(compileErr))
+local exec, loadErr = loadstring(source)
+if type(exec) ~= "function" then
+	warn("[ASTRAL HUB] Loadstring error: " .. tostring(loadErr))
 	return
 end
 
@@ -66,11 +60,10 @@ if getgenv then
 	getgenv().ASTRAL_HUB_LOADED = true
 end
 
-local okRun, runErr = pcall(fn)
-if not okRun then
+local ran, runErr = pcall(exec)
+if not ran then
 	if getgenv then
 		getgenv().ASTRAL_HUB_LOADED = false
 	end
-	notifyFallback("ASTRAL HUB • Runtime Error", "Ошибка при запуске модуля")
-	warn("[ASTRAL HUB Loader] Runtime error: " .. tostring(runErr))
+	warn("[ASTRAL HUB] Execution error: " .. tostring(runErr))
 end
