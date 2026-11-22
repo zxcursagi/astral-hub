@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.4 | GitHub Module | Aimbot + Silent Aim + Rage + ESP + Skin 3D + Configs
+-- ASTRAL HUB v2.4 | Clean Rollback | Aimbot + Silent Aim + Rage + ESP + Skin 3D + Configs
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
