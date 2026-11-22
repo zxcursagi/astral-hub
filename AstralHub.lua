@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.0 | GitHub Module | Key ("soso1") | Aimbot + Silent Aim + Rage + ESP + 3D Skin Viewer
+-- ASTRAL HUB v2.2 
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,25 +7,68 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Mouse = LocalPlayer:GetMouse()
 local Camera = Workspace.CurrentCamera
 
-local CORRECT_KEY = "soso1"
-local KEY_HOTKEY = Enum.KeyCode.Insert
 local HUB_HOTKEY = Enum.KeyCode.RightShift
+local ALT_HOTKEY = Enum.KeyCode.Insert
+
+local COLOR_THEMES = {
+	["Astral Violet"] = {
+		BgMain = Color3.fromRGB(16, 10, 30),
+		BgCard = Color3.fromRGB(27, 17, 50),
+		BgCardHover = Color3.fromRGB(38, 24, 70),
+		BgInput = Color3.fromRGB(11, 7, 21),
+		Stroke = Color3.fromRGB(139, 92, 246),
+		Accent = Color3.fromRGB(168, 85, 247),
+		AccentBright = Color3.fromRGB(192, 132, 252),
+		SilentAccent = Color3.fromRGB(56, 189, 248)
+	},
+	["Crimson Void"] = {
+		BgMain = Color3.fromRGB(22, 9, 14),
+		BgCard = Color3.fromRGB(38, 14, 22),
+		BgCardHover = Color3.fromRGB(56, 19, 31),
+		BgInput = Color3.fromRGB(14, 6, 9),
+		Stroke = Color3.fromRGB(239, 68, 68),
+		Accent = Color3.fromRGB(220, 38, 38),
+		AccentBright = Color3.fromRGB(248, 113, 113),
+		SilentAccent = Color3.fromRGB(251, 146, 60)
+	},
+	["Cyber Cyan"] = {
+		BgMain = Color3.fromRGB(8, 18, 26),
+		BgCard = Color3.fromRGB(13, 30, 42),
+		BgCardHover = Color3.fromRGB(19, 44, 60),
+		BgInput = Color3.fromRGB(5, 12, 18),
+		Stroke = Color3.fromRGB(34, 211, 238),
+		Accent = Color3.fromRGB(6, 182, 212),
+		AccentBright = Color3.fromRGB(103, 232, 249),
+		SilentAccent = Color3.fromRGB(167, 139, 250)
+	},
+	["Emerald Ghost"] = {
+		BgMain = Color3.fromRGB(9, 21, 16),
+		BgCard = Color3.fromRGB(15, 36, 27),
+		BgCardHover = Color3.fromRGB(22, 52, 39),
+		BgInput = Color3.fromRGB(6, 14, 10),
+		Stroke = Color3.fromRGB(52, 211, 153),
+		Accent = Color3.fromRGB(16, 185, 129),
+		AccentBright = Color3.fromRGB(110, 231, 183),
+		SilentAccent = Color3.fromRGB(56, 189, 248)
+	}
+}
 
 local Theme = {
-	BgMain = Color3.fromRGB(16, 10, 30),
-	BgCard = Color3.fromRGB(27, 17, 50),
-	BgCardHover = Color3.fromRGB(38, 24, 70),
-	BgInput = Color3.fromRGB(11, 7, 21),
-	Stroke = Color3.fromRGB(139, 92, 246),
-	Accent = Color3.fromRGB(168, 85, 247),
-	AccentBright = Color3.fromRGB(192, 132, 252),
-	SilentAccent = Color3.fromRGB(56, 189, 248),
+	BgMain = COLOR_THEMES["Astral Violet"].BgMain,
+	BgCard = COLOR_THEMES["Astral Violet"].BgCard,
+	BgCardHover = COLOR_THEMES["Astral Violet"].BgCardHover,
+	BgInput = COLOR_THEMES["Astral Violet"].BgInput,
+	Stroke = COLOR_THEMES["Astral Violet"].Stroke,
+	Accent = COLOR_THEMES["Astral Violet"].Accent,
+	AccentBright = COLOR_THEMES["Astral Violet"].AccentBright,
+	SilentAccent = COLOR_THEMES["Astral Violet"].SilentAccent,
 	TextMain = Color3.fromRGB(245, 243, 255),
 	TextMuted = Color3.fromRGB(167, 155, 204),
 	Success = Color3.fromRGB(74, 222, 128),
@@ -33,15 +76,16 @@ local Theme = {
 	GlassAlpha = 0.22
 }
 
+local THEME_NAMES = { "Astral Violet", "Crimson Void", "Cyber Cyan", "Emerald Ghost" }
+local CONFIG_PROFILES = { "Default", "Legit", "Rage", "HvH" }
 local AIM_MODES = { "Camera", "Snap", "Triggerbot" }
 local TARGET_PARTS = { "Head", "HumanoidRootPart", "Nearest" }
 local SILENT_PARTS = { "Head", "Neck", "Torso", "Arms", "Legs" }
 local TRACER_ORIGINS = { "Bottom", "Center", "Mouse" }
 local HITBOX_PARTS = { "HumanoidRootPart", "Head" }
 
-local State = {
-	KeyUnlocked = false,
-	KeyWinVisible = false,
+local DEFAULT_STATE = {
+	HubReady = false,
 	HubVisible = false,
 	Minimized = false,
 	ActiveTab = "Aimbot",
@@ -117,8 +161,26 @@ local State = {
 	AntiAFKEnabled = false,
 
 	SkinAutoRotate = true,
-	SkinRotateSpeed = 35
+	SkinRotateSpeed = 35,
+
+	ConfigProfile = "Default",
+	AutoSaveEnabled = true,
+	NotificationsEnabled = true,
+	ColorTheme = "Astral Violet",
+	CompactMode = false,
+	WatermarkEnabled = true,
+	FPSSaverEnabled = false
 }
+
+local function cloneTable(t)
+	local copy = {}
+	for k, v in pairs(t) do
+		copy[k] = v
+	end
+	return copy
+end
+
+local State = cloneTable(DEFAULT_STATE)
 
 local origAmbient = Lighting.Ambient
 local origOutdoorAmbient = Lighting.OutdoorAmbient
@@ -138,13 +200,15 @@ if not blurEffect then
 	blurEffect.Parent = Lighting
 end
 
+local splashActive = true
+
 local function updateBlur()
-	if not blurEffect then
+	if not blurEffect or not blurEffect.Parent then
 		return
 	end
-	local active = State.BlurEnabled and (State.HubVisible or State.KeyWinVisible) and not State.Minimized
-	TweenService:Create(blurEffect, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-		Size = active and State.BlurSize or 0
+	local active = State.BlurEnabled and (splashActive or (State.HubVisible and not State.Minimized))
+	TweenService:Create(blurEffect, TweenInfo.new(0.26, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = active and math.max(State.BlurSize, splashActive and 18 or 0) or 0
 	}):Play()
 end
 
@@ -225,6 +289,143 @@ gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = PlayerGui
 
+-- Красивый загрузочный фон (Splash Screen)
+local splashBg = Instance.new("Frame")
+splashBg.Name = "AstralSplashScreen"
+splashBg.Size = UDim2.new(1, 0, 1, 0)
+splashBg.Position = UDim2.new(0, 0, 0, 0)
+splashBg.BackgroundColor3 = Theme.BgMain
+splashBg.BackgroundTransparency = 0.14
+splashBg.BorderSizePixel = 0
+splashBg.ZIndex = 50
+splashBg.Parent = gui
+
+local splashGrad = Instance.new("UIGradient")
+splashGrad.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(165, 130, 235)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 45, 120))
+})
+splashGrad.Rotation = 35
+splashGrad.Parent = splashBg
+
+local glowOrb1 = Instance.new("Frame")
+glowOrb1.Size = UDim2.new(0, 320, 0, 320)
+glowOrb1.Position = UDim2.new(0.5, -240, 0.5, -190)
+glowOrb1.BackgroundColor3 = Theme.Accent
+glowOrb1.BackgroundTransparency = 0.78
+glowOrb1.BorderSizePixel = 0
+glowOrb1.ZIndex = 51
+glowOrb1.Parent = splashBg
+addCorner(glowOrb1, 999)
+
+local glowOrb2 = Instance.new("Frame")
+glowOrb2.Size = UDim2.new(0, 260, 0, 260)
+glowOrb2.Position = UDim2.new(0.5, -10, 0.5, -50)
+glowOrb2.BackgroundColor3 = Theme.SilentAccent
+glowOrb2.BackgroundTransparency = 0.84
+glowOrb2.BorderSizePixel = 0
+glowOrb2.ZIndex = 51
+glowOrb2.Parent = splashBg
+addCorner(glowOrb2, 999)
+
+local splashCard = Instance.new("Frame")
+splashCard.Name = "SplashCenterCard"
+splashCard.AnchorPoint = Vector2.new(0.5, 0.5)
+splashCard.Size = UDim2.new(0, 410, 0, 195)
+splashCard.Position = UDim2.new(0.5, 0, 0.5, 0)
+splashCard.BackgroundColor3 = Theme.BgCard
+splashCard.BackgroundTransparency = 0.18
+splashCard.BorderSizePixel = 0
+splashCard.ZIndex = 52
+splashCard.Parent = splashBg
+addCorner(splashCard, 18)
+local splashStroke = addStroke(splashCard, Theme.Stroke, 1.5, 0.2)
+
+local splashScale = Instance.new("UIScale")
+splashScale.Scale = 0.92
+splashScale.Parent = splashCard
+
+local splashTag = Instance.new("TextLabel")
+splashTag.Size = UDim2.new(1, -32, 0, 20)
+splashTag.Position = UDim2.new(0, 16, 0, 18)
+splashTag.BackgroundTransparency = 1
+splashTag.Text = "✦ ASTRAL HUB  •  v2.2"
+splashTag.TextColor3 = Theme.AccentBright
+splashTag.Font = Enum.Font.GothamBold
+splashTag.TextSize = 11
+splashTag.TextXAlignment = Enum.TextXAlignment.Left
+splashTag.ZIndex = 53
+splashTag.Parent = splashCard
+
+local splashMainTitle = Instance.new("TextLabel")
+splashMainTitle.Size = UDim2.new(1, -32, 0, 32)
+splashMainTitle.Position = UDim2.new(0, 16, 0, 40)
+splashMainTitle.BackgroundTransparency = 1
+splashMainTitle.Text = "Загрузка интерфейса..."
+splashMainTitle.TextColor3 = Theme.TextMain
+splashMainTitle.Font = Enum.Font.GothamBold
+splashMainTitle.TextSize = 21
+splashMainTitle.TextXAlignment = Enum.TextXAlignment.Left
+splashMainTitle.ZIndex = 53
+splashTag.ZIndex = 53
+splashMainTitle.Parent = splashCard
+
+local splashStatus = Instance.new("TextLabel")
+splashStatus.Size = UDim2.new(1, -32, 0, 20)
+splashStatus.Position = UDim2.new(0, 16, 0, 76)
+splashStatus.BackgroundTransparency = 1
+splashStatus.Text = "Подготовка модулей Aimbot, Silent Aim, Rage и ESP..."
+splashStatus.TextColor3 = Theme.TextMuted
+splashStatus.Font = Enum.Font.GothamMedium
+splashStatus.TextSize = 11
+splashStatus.TextXAlignment = Enum.TextXAlignment.Left
+splashStatus.TextTruncate = Enum.TextTruncate.AtEnd
+splashStatus.ZIndex = 53
+splashStatus.Parent = splashCard
+
+local splashPct = Instance.new("TextLabel")
+splashPct.Size = UDim2.new(0, 60, 0, 18)
+splashPct.Position = UDim2.new(1, -76, 0, 114)
+splashPct.BackgroundTransparency = 1
+splashPct.Text = "0%"
+splashPct.TextColor3 = Theme.AccentBright
+splashPct.Font = Enum.Font.GothamBold
+splashPct.TextSize = 11
+splashPct.TextXAlignment = Enum.TextXAlignment.Right
+splashPct.ZIndex = 53
+splashPct.Parent = splashCard
+
+local splashBarBg = Instance.new("Frame")
+splashBarBg.Size = UDim2.new(1, -32, 0, 8)
+splashBarBg.Position = UDim2.new(0, 16, 0, 138)
+splashBarBg.BackgroundColor3 = Theme.BgInput
+splashBarBg.BackgroundTransparency = 0.2
+splashBarBg.BorderSizePixel = 0
+splashBarBg.ZIndex = 53
+splashBarBg.Parent = splashCard
+addCorner(splashBarBg, 999)
+
+local splashBarFill = Instance.new("Frame")
+splashBarFill.Size = UDim2.new(0, 0, 1, 0)
+splashBarFill.BackgroundColor3 = Theme.AccentBright
+splashBarFill.BorderSizePixel = 0
+splashBarFill.ZIndex = 54
+splashBarFill.Parent = splashBarBg
+addCorner(splashBarFill, 999)
+
+local splashFooter = Instance.new("TextLabel")
+splashFooter.Size = UDim2.new(1, -32, 0, 18)
+splashFooter.Position = UDim2.new(0, 16, 1, -28)
+splashFooter.BackgroundTransparency = 1
+splashFooter.Text = "Автоматическое открытие меню после инициализации"
+splashFooter.TextColor3 = Theme.TextMuted
+splashFooter.Font = Enum.Font.Gotham
+splashFooter.TextSize = 10
+splashFooter.TextXAlignment = Enum.TextXAlignment.Left
+splashFooter.ZIndex = 53
+splashFooter.Parent = splashCard
+
 local notifHolder = Instance.new("Frame")
 notifHolder.Size = UDim2.new(0, 300, 1, -24)
 notifHolder.Position = UDim2.new(1, -314, 0, 12)
@@ -239,6 +440,9 @@ notifList.SortOrder = Enum.SortOrder.LayoutOrder
 notifList.Parent = notifHolder
 
 local function pushNotify(title, desc, isError)
+	if not State.NotificationsEnabled and not isError then
+		return
+	end
 	local card = Instance.new("Frame")
 	card.Size = UDim2.new(1, 0, 0, 56)
 	card.BackgroundColor3 = Theme.BgCard
@@ -294,20 +498,44 @@ local function pushNotify(title, desc, isError)
 	end)
 end
 
+-- Watermark HUD
+local watermarkCard = Instance.new("Frame")
+watermarkCard.Name = "AstralWatermarkHUD"
+watermarkCard.Size = UDim2.new(0, 290, 0, 28)
+watermarkCard.Position = UDim2.new(0.5, -145, 0, 12)
+watermarkCard.BackgroundColor3 = Theme.BgCard
+watermarkCard.BackgroundTransparency = 0.25
+watermarkCard.Visible = false
+watermarkCard.Parent = gui
+addCorner(watermarkCard, 8)
+local wmStroke = addStroke(watermarkCard, Theme.Accent, 1, 0.35)
+makeDraggable(watermarkCard, watermarkCard)
+
+local wmLabel = Instance.new("TextLabel")
+wmLabel.Size = UDim2.new(1, -14, 1, 0)
+wmLabel.Position = UDim2.new(0, 7, 0, 0)
+wmLabel.BackgroundTransparency = 1
+wmLabel.Text = "✦ ASTRAL HUB  |  60 FPS"
+wmLabel.TextColor3 = Theme.TextMain
+wmLabel.Font = Enum.Font.GothamBold
+wmLabel.TextSize = 11
+wmLabel.Parent = watermarkCard
+
 local triggerBtn = Instance.new("TextButton")
 triggerBtn.Name = "AstralTrigger"
-triggerBtn.Size = UDim2.new(0, 108, 0, 30)
+triggerBtn.Size = UDim2.new(0, 114, 0, 30)
 triggerBtn.Position = UDim2.new(0, 14, 0.5, -15)
 triggerBtn.BackgroundColor3 = Theme.BgCard
 triggerBtn.BackgroundTransparency = 0.25
-triggerBtn.Text = "✦ ASTRAL [INS]"
+triggerBtn.Text = "✦ ASTRAL [RSH]"
 triggerBtn.TextColor3 = Theme.AccentBright
 triggerBtn.Font = Enum.Font.GothamBold
 triggerBtn.TextSize = 11
 triggerBtn.AutoButtonColor = false
+triggerBtn.Visible = false
 triggerBtn.Parent = gui
 addCorner(triggerBtn, 8)
-addStroke(triggerBtn, Theme.Accent, 1, 0.35)
+local trigStroke = addStroke(triggerBtn, Theme.Accent, 1, 0.35)
 makeDraggable(triggerBtn, triggerBtn)
 
 local chHolder = Instance.new("Frame")
@@ -343,7 +571,7 @@ radarCard.BackgroundTransparency = 0.25
 radarCard.Visible = false
 radarCard.Parent = gui
 addCorner(radarCard, 10)
-addStroke(radarCard, Theme.Stroke, 1.1, 0.35)
+local radarStroke = addStroke(radarCard, Theme.Stroke, 1.1, 0.35)
 makeDraggable(radarCard, radarCard)
 
 local radarTitle = Instance.new("TextLabel")
@@ -368,103 +596,26 @@ radarInfo.TextSize = 11
 radarInfo.TextXAlignment = Enum.TextXAlignment.Left
 radarInfo.Parent = radarCard
 
--- Key System
-local keyWin = Instance.new("Frame")
-keyWin.Name = "AstralKeyWindow"
-keyWin.Size = UDim2.new(0, 370, 0, 215)
-keyWin.Position = UDim2.new(0.5, -185, 0.5, -107)
-keyWin.BackgroundColor3 = Theme.BgMain
-keyWin.BackgroundTransparency = Theme.GlassAlpha
-keyWin.Visible = false
-keyWin.ClipsDescendants = true
-keyWin.Parent = gui
-addCorner(keyWin, 14)
-addStroke(keyWin, Theme.Stroke, 1.3, 0.25)
-
-local keyTop = Instance.new("Frame")
-keyTop.Size = UDim2.new(1, 0, 0, 44)
-keyTop.BackgroundColor3 = Theme.BgCard
-keyTop.BackgroundTransparency = 0.25
-keyTop.BorderSizePixel = 0
-keyTop.Parent = keyWin
-makeDraggable(keyWin, keyTop)
-
-local keyTitle = Instance.new("TextLabel")
-keyTitle.Size = UDim2.new(1, -50, 1, 0)
-keyTitle.Position = UDim2.new(0, 14, 0, 0)
-keyTitle.BackgroundTransparency = 1
-keyTitle.Text = "✦ ASTRAL HUB  •  KEY SYSTEM"
-keyTitle.TextColor3 = Theme.TextMain
-keyTitle.Font = Enum.Font.GothamBold
-keyTitle.TextSize = 13
-keyTitle.TextXAlignment = Enum.TextXAlignment.Left
-keyTitle.Parent = keyTop
-
-local keyClose = Instance.new("TextButton")
-keyClose.Size = UDim2.new(0, 28, 0, 28)
-keyClose.Position = UDim2.new(1, -38, 0.5, -14)
-keyClose.BackgroundColor3 = Theme.BgInput
-keyClose.BackgroundTransparency = 0.2
-keyClose.Text = "×"
-keyClose.TextColor3 = Theme.TextMuted
-keyClose.Font = Enum.Font.GothamBold
-keyClose.TextSize = 16
-keyClose.Parent = keyTop
-addCorner(keyClose, 7)
-
-local keySub = Instance.new("TextLabel")
-keySub.Size = UDim2.new(1, -28, 0, 32)
-keySub.Position = UDim2.new(0, 14, 0, 52)
-keySub.BackgroundTransparency = 1
-keySub.Text = "Скрытое окно доступа ASTRAL HUB. Введите ключ для запуска."
-keySub.TextColor3 = Theme.TextMuted
-keySub.Font = Enum.Font.Gotham
-keySub.TextSize = 11
-keySub.TextXAlignment = Enum.TextXAlignment.Left
-keySub.TextWrapped = true
-keySub.Parent = keyWin
-
-local keyBox = Instance.new("TextBox")
-keyBox.Size = UDim2.new(1, -28, 0, 40)
-keyBox.Position = UDim2.new(0, 14, 0, 94)
-keyBox.BackgroundColor3 = Theme.BgInput
-keyBox.BackgroundTransparency = 0.2
-keyBox.PlaceholderText = "Введите ключ..."
-keyBox.PlaceholderColor3 = Color3.fromRGB(120, 108, 158)
-keyBox.Text = ""
-keyBox.TextColor3 = Theme.TextMain
-keyBox.Font = Enum.Font.GothamMedium
-keyBox.TextSize = 13
-keyBox.ClearTextOnFocus = false
-keyBox.Parent = keyWin
-addCorner(keyBox, 9)
-local keyBoxStroke = addStroke(keyBox, Theme.Stroke, 1.1, 0.35)
-
-local keySubmit = Instance.new("TextButton")
-keySubmit.Size = UDim2.new(1, -28, 0, 38)
-keySubmit.Position = UDim2.new(0, 14, 0, 148)
-keySubmit.BackgroundColor3 = Theme.Accent
-keySubmit.BackgroundTransparency = 0.12
-keySubmit.Text = "Войти в ASTRAL HUB"
-keySubmit.TextColor3 = Color3.fromRGB(255, 255, 255)
-keySubmit.Font = Enum.Font.GothamBold
-keySubmit.TextSize = 13
-keySubmit.AutoButtonColor = false
-keySubmit.Parent = keyWin
-addCorner(keySubmit, 9)
-
 -- Main Hub
+local HUB_NORMAL_SIZE = UDim2.new(0, 720, 0, 475)
+local HUB_COMPACT_SIZE = UDim2.new(0, 620, 0, 405)
+
 local hub = Instance.new("Frame")
 hub.Name = "AstralMainWindow"
-hub.Size = UDim2.new(0, 720, 0, 475)
-hub.Position = UDim2.new(0.5, -360, 0.5, -237)
+hub.AnchorPoint = Vector2.new(0.5, 0.5)
+hub.Size = HUB_NORMAL_SIZE
+hub.Position = UDim2.new(0.5, 0, 0.5, 24)
 hub.BackgroundColor3 = Theme.BgMain
 hub.BackgroundTransparency = Theme.GlassAlpha
 hub.Visible = false
 hub.ClipsDescendants = true
 hub.Parent = gui
 addCorner(hub, 15)
-addStroke(hub, Theme.Stroke, 1.4, 0.25)
+local hubStroke = addStroke(hub, Theme.Stroke, 1.4, 0.25)
+
+local hubScale = Instance.new("UIScale")
+hubScale.Scale = 0.94
+hubScale.Parent = hub
 
 local hubHeader = Instance.new("Frame")
 hubHeader.Size = UDim2.new(1, 0, 0, 48)
@@ -493,11 +644,11 @@ hubTitle.TextXAlignment = Enum.TextXAlignment.Left
 hubTitle.Parent = hubHeader
 
 local statusBadge = Instance.new("TextLabel")
-statusBadge.Size = UDim2.new(0, 125, 0, 24)
-statusBadge.Position = UDim2.new(1, -210, 0.5, -12)
+statusBadge.Size = UDim2.new(0, 118, 0, 24)
+statusBadge.Position = UDim2.new(1, -203, 0.5, -12)
 statusBadge.BackgroundColor3 = Theme.BgInput
 statusBadge.BackgroundTransparency = 0.25
-statusBadge.Text = "ASTRAL VERIFIED"
+statusBadge.Text = "ASTRAL READY"
 statusBadge.TextColor3 = Theme.Success
 statusBadge.Font = Enum.Font.GothamBold
 statusBadge.TextSize = 10
@@ -554,7 +705,13 @@ bodyArea.Parent = hub
 
 local pages = {}
 local tabBtns = {}
+local uiSyncList = {}
+local themedCards = {}
+local themedStrokes = {}
+local themedInputs = {}
+local themedAccents = {}
 local rebuildSkinPreview = nil
+local scheduleAutoSave = nil
 
 local function createPage(tabId)
 	local sf = Instance.new("ScrollingFrame")
@@ -568,6 +725,7 @@ local function createPage(tabId)
 	sf.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	sf.Visible = (tabId == State.ActiveTab)
 	sf.Parent = bodyArea
+	table.insert(themedAccents, { obj = sf, prop = "ScrollBarImageColor3", key = "Accent" })
 
 	local ll = Instance.new("UIListLayout")
 	ll.Padding = UDim.new(0, 9)
@@ -630,9 +788,10 @@ local function addSection(parent, title, order)
 	l.TextSize = 10
 	l.TextXAlignment = Enum.TextXAlignment.Left
 	l.Parent = parent
+	table.insert(themedAccents, { obj = l, prop = "TextColor3", key = "AccentBright" })
 end
 
-local function addToggle(parent, title, desc, initVal, order, cb)
+local function addToggle(parent, title, desc, initVal, order, cb, stateKey)
 	local cur = initVal
 	local card = Instance.new("Frame")
 	card.Size = UDim2.new(1, 0, 0, 50)
@@ -641,7 +800,9 @@ local function addToggle(parent, title, desc, initVal, order, cb)
 	card.BackgroundTransparency = Theme.GlassAlpha
 	card.Parent = parent
 	addCorner(card, 10)
-	addStroke(card, Theme.Stroke, 1, 0.45)
+	local st = addStroke(card, Theme.Stroke, 1, 0.45)
+	table.insert(themedCards, card)
+	table.insert(themedStrokes, st)
 
 	local t1 = Instance.new("TextLabel")
 	t1.Size = UDim2.new(1, -76, 0, 18)
@@ -682,15 +843,29 @@ local function addToggle(parent, title, desc, initVal, order, cb)
 	knob.Parent = sw
 	addCorner(knob, 999)
 
-	sw.MouseButton1Click:Connect(function()
-		cur = not cur
+	local function setVisual(val, fireCb, triggerSave)
+		cur = not not val
 		sw.BackgroundColor3 = cur and Theme.Accent or Theme.BgInput
 		knob.Position = cur and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-		cb(cur)
+		if fireCb and cb then
+			cb(cur)
+		end
+		if triggerSave and scheduleAutoSave then
+			scheduleAutoSave()
+		end
+	end
+
+	sw.MouseButton1Click:Connect(function()
+		setVisual(not cur, true, true)
+	end)
+
+	table.insert(uiSyncList, function()
+		local nextVal = stateKey and State[stateKey] or cur
+		setVisual(nextVal, true, false)
 	end)
 end
 
-local function addSlider(parent, title, minV, maxV, initV, step, order, cb)
+local function addSlider(parent, title, minV, maxV, initV, step, order, cb, stateKey)
 	local cur = math.clamp(initV, minV, maxV)
 	local card = Instance.new("Frame")
 	card.Size = UDim2.new(1, 0, 0, 56)
@@ -699,7 +874,9 @@ local function addSlider(parent, title, minV, maxV, initV, step, order, cb)
 	card.BackgroundTransparency = Theme.GlassAlpha
 	card.Parent = parent
 	addCorner(card, 10)
-	addStroke(card, Theme.Stroke, 1, 0.45)
+	local st = addStroke(card, Theme.Stroke, 1, 0.45)
+	table.insert(themedCards, card)
+	table.insert(themedStrokes, st)
 
 	local t1 = Instance.new("TextLabel")
 	t1.Size = UDim2.new(0.7, -12, 0, 20)
@@ -722,6 +899,7 @@ local function addSlider(parent, title, minV, maxV, initV, step, order, cb)
 	vLbl.TextSize = 12
 	vLbl.TextXAlignment = Enum.TextXAlignment.Right
 	vLbl.Parent = card
+	table.insert(themedAccents, { obj = vLbl, prop = "TextColor3", key = "AccentBright" })
 
 	local bar = Instance.new("Frame")
 	bar.Size = UDim2.new(1, -24, 0, 7)
@@ -730,23 +908,34 @@ local function addSlider(parent, title, minV, maxV, initV, step, order, cb)
 	bar.BackgroundTransparency = 0.2
 	bar.Parent = card
 	addCorner(bar, 999)
+	table.insert(themedInputs, bar)
 
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.new((cur - minV) / math.max(maxV - minV, 1e-5), 0, 1, 0)
 	fill.BackgroundColor3 = Theme.AccentBright
 	fill.Parent = bar
 	addCorner(fill, 999)
+	table.insert(themedAccents, { obj = fill, prop = "BackgroundColor3", key = "AccentBright" })
+
+	local function setVal(val, fireCb, triggerSave)
+		local snapped = math.floor(val / step + 0.5) * step
+		snapped = math.clamp(math.floor(snapped * 100 + 0.5) / 100, minV, maxV)
+		cur = snapped
+		vLbl.Text = tostring(cur)
+		fill.Size = UDim2.new((cur - minV) / math.max(maxV - minV, 1e-5), 0, 1, 0)
+		if fireCb and cb then
+			cb(cur)
+		end
+		if triggerSave and scheduleAutoSave then
+			scheduleAutoSave()
+		end
+	end
 
 	local dragging = false
 	local function applyX(x)
 		local ratio = math.clamp((x - bar.AbsolutePosition.X) / math.max(bar.AbsoluteSize.X, 1), 0, 1)
 		local raw = minV + (maxV - minV) * ratio
-		local snapped = math.floor(raw / step + 0.5) * step
-		snapped = math.clamp(math.floor(snapped * 100 + 0.5) / 100, minV, maxV)
-		cur = snapped
-		vLbl.Text = tostring(cur)
-		fill.Size = UDim2.new((cur - minV) / math.max(maxV - minV, 1e-5), 0, 1, 0)
-		cb(cur)
+		setVal(raw, true, true)
 	end
 
 	bar.InputBegan:Connect(function(inp)
@@ -765,9 +954,14 @@ local function addSlider(parent, title, minV, maxV, initV, step, order, cb)
 			applyX(inp.Position.X)
 		end
 	end)
+
+	table.insert(uiSyncList, function()
+		local nextVal = stateKey and State[stateKey] or cur
+		setVal(nextVal, true, false)
+	end)
 end
 
-local function addCycle(parent, title, opts, initOpt, order, cb)
+local function addCycle(parent, title, opts, initOpt, order, cb, stateKey)
 	local idx = 1
 	for i, opt in ipairs(opts) do
 		if opt == initOpt then
@@ -783,7 +977,9 @@ local function addCycle(parent, title, opts, initOpt, order, cb)
 	card.BackgroundTransparency = Theme.GlassAlpha
 	card.Parent = parent
 	addCorner(card, 10)
-	addStroke(card, Theme.Stroke, 1, 0.45)
+	local st = addStroke(card, Theme.Stroke, 1, 0.45)
+	table.insert(themedCards, card)
+	table.insert(themedStrokes, st)
 
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(0.55, -12, 1, 0)
@@ -808,13 +1004,38 @@ local function addCycle(parent, title, opts, initOpt, order, cb)
 	btn.AutoButtonColor = false
 	btn.Parent = card
 	addCorner(btn, 7)
-	addStroke(btn, Theme.Accent, 1, 0.45)
+	local bSt = addStroke(btn, Theme.Accent, 1, 0.45)
+	table.insert(themedInputs, btn)
+	table.insert(themedAccents, { obj = btn, prop = "TextColor3", key = "AccentBright" })
+	table.insert(themedStrokes, bSt)
 
-	btn.MouseButton1Click:Connect(function()
-		idx = (idx % #opts) + 1
+	local function setOpt(optVal, fireCb, triggerSave)
+		local found = 1
+		for i, o in ipairs(opts) do
+			if o == optVal then
+				found = i
+				break
+			end
+		end
+		idx = found
 		local selected = opts[idx]
 		btn.Text = selected .. "  ▸"
-		cb(selected)
+		if fireCb and cb then
+			cb(selected)
+		end
+		if triggerSave and scheduleAutoSave then
+			scheduleAutoSave()
+		end
+	end
+
+	btn.MouseButton1Click:Connect(function()
+		local nextIdx = (idx % #opts) + 1
+		setOpt(opts[nextIdx], true, true)
+	end)
+
+	table.insert(uiSyncList, function()
+		local nextOpt = stateKey and State[stateKey] or opts[idx]
+		setOpt(nextOpt, true, false)
 	end)
 end
 
@@ -831,8 +1052,11 @@ local function addAction(parent, title, order, cb)
 	b.AutoButtonColor = false
 	b.Parent = parent
 	addCorner(b, 8)
-	addStroke(b, Theme.Accent, 1, 0.35)
+	local bSt = addStroke(b, Theme.Accent, 1, 0.35)
+	table.insert(themedInputs, b)
+	table.insert(themedStrokes, bSt)
 	b.MouseButton1Click:Connect(cb)
+	return b
 end
 
 createTab("Aimbot", "🎯  Aimbot", 1)
@@ -841,6 +1065,7 @@ createTab("Rage", "🔥  Rage", 3)
 createTab("ESP", "👁️  ESP", 4)
 createTab("Skin3D", "🧍  Skin 3D", 5)
 createTab("Visuals", "✨  Visuals / Extra", 6)
+createTab("Settings", "⚙️  Settings", 7)
 
 local aimPage = createPage("Aimbot")
 local silentPage = createPage("Silent")
@@ -848,103 +1073,101 @@ local ragePage = createPage("Rage")
 local espPage = createPage("ESP")
 local skinPage = createPage("Skin3D")
 local visPage = createPage("Visuals")
+local settingsPage = createPage("Settings")
 
 -- Aimbot
 addSection(aimPage, "Обычный аимбот (наводка камеры)", 1)
-addToggle(aimPage, "Enable Aimbot", "Включает плавное наведение камеры на цель", false, 2, function(v) State.AimEnabled = v end)
-addCycle(aimPage, "Aim Mode", AIM_MODES, State.AimMode, 3, function(v) State.AimMode = v end)
-addCycle(aimPage, "Target Part", TARGET_PARTS, State.TargetPartMode, 4, function(v) State.TargetPartMode = v end)
-addToggle(aimPage, "Hold RMB Only", "Наводить при зажатой правой кнопке мыши", true, 5, function(v) State.AimHoldOnly = v end)
+addToggle(aimPage, "Enable Aimbot", "Включает плавное наведение камеры на цель", State.AimEnabled, 2, function(v) State.AimEnabled = v end, "AimEnabled")
+addCycle(aimPage, "Aim Mode", AIM_MODES, State.AimMode, 3, function(v) State.AimMode = v end, "AimMode")
+addCycle(aimPage, "Target Part", TARGET_PARTS, State.TargetPartMode, 4, function(v) State.TargetPartMode = v end, "TargetPartMode")
+addToggle(aimPage, "Hold RMB Only", "Наводить при зажатой правой кнопке мыши", State.AimHoldOnly, 5, function(v) State.AimHoldOnly = v end, "AimHoldOnly")
 
 addSection(aimPage, "Настройки и проверки", 6)
-addToggle(aimPage, "Show Aimbot FOV", "Показывает фиолетовый круг захвата Aimbot", true, 7, function(v) State.FOVEnabled = v end)
-addSlider(aimPage, "Aimbot FOV Radius", 35, 360, State.FOVRadius, 5, 8, function(v) State.FOVRadius = v end)
-addSlider(aimPage, "Smoothness", 0.04, 1.0, State.Smoothness, 0.02, 9, function(v) State.Smoothness = v end)
-addSlider(aimPage, "Prediction", 0, 0.35, State.Prediction, 0.01, 10, function(v) State.Prediction = v end)
-addToggle(aimPage, "Team Check", "Не наводить на свою команду", true, 11, function(v) State.TeamCheck = v end)
-addToggle(aimPage, "Wall Check", "Проверка видимости сквозь стены", true, 12, function(v) State.WallCheck = v end)
-addToggle(aimPage, "Sticky Target Lock", "Удерживать цель пока она жива", true, 13, function(v) State.StickyTarget = v end)
-addSlider(aimPage, "Triggerbot Delay", 0.02, 0.3, State.TriggerDelay, 0.01, 14, function(v) State.TriggerDelay = v end)
+addToggle(aimPage, "Show Aimbot FOV", "Показывает фиолетовый круг захвата Aimbot", State.FOVEnabled, 7, function(v) State.FOVEnabled = v end, "FOVEnabled")
+addSlider(aimPage, "Aimbot FOV Radius", 35, 360, State.FOVRadius, 5, 8, function(v) State.FOVRadius = v end, "FOVRadius")
+addSlider(aimPage, "Smoothness", 0.04, 1.0, State.Smoothness, 0.02, 9, function(v) State.Smoothness = v end, "Smoothness")
+addSlider(aimPage, "Prediction", 0, 0.35, State.Prediction, 0.01, 10, function(v) State.Prediction = v end, "Prediction")
+addToggle(aimPage, "Team Check", "Не наводить на свою команду", State.TeamCheck, 11, function(v) State.TeamCheck = v end, "TeamCheck")
+addToggle(aimPage, "Wall Check", "Проверка видимости сквозь стены", State.WallCheck, 12, function(v) State.WallCheck = v end, "WallCheck")
+addToggle(aimPage, "Sticky Target Lock", "Удерживать цель пока она жива", State.StickyTarget, 13, function(v) State.StickyTarget = v end, "StickyTarget")
+addSlider(aimPage, "Triggerbot Delay", 0.02, 0.3, State.TriggerDelay, 0.01, 14, function(v) State.TriggerDelay = v end, "TriggerDelay")
 
--- Silent Aim (всегда активен без ПКМ)
+-- Silent Aim
 addSection(silentPage, "Silent Aim (всегда активен без ПКМ)", 1)
-addToggle(silentPage, "Enable Silent Aim", "Работает постоянно без ПКМ при стрельбе и зажиме", false, 2, function(v)
+addToggle(silentPage, "Enable Silent Aim", "Работает постоянно без ПКМ при стрельбе и зажиме", State.SilentEnabled, 2, function(v)
 	State.SilentEnabled = v
-	if v then
-		pushNotify("Silent Aim", "Включён без ПКМ -> " .. State.SilentPart)
-	end
-end)
+end, "SilentEnabled")
 addCycle(silentPage, "Магнитить пули в", SILENT_PARTS, State.SilentPart, 3, function(v)
 	State.SilentPart = v
-end)
-addToggle(silentPage, "Show Silent FOV Circle", "Голубой круг зоны детекта Silent Aim вокруг прицела", true, 4, function(v)
+end, "SilentPart")
+addToggle(silentPage, "Show Silent FOV Circle", "Голубой круг зоны детекта Silent Aim вокруг прицела", State.SilentFOVEnabled, 4, function(v)
 	State.SilentFOVEnabled = v
-end)
+end, "SilentFOVEnabled")
 addSlider(silentPage, "Silent FOV Radius", 30, 420, State.SilentFOVRadius, 5, 5, function(v)
 	State.SilentFOVRadius = v
-end)
+end, "SilentFOVRadius")
 addSlider(silentPage, "Hit Chance (%)", 10, 100, State.SilentHitChance, 5, 6, function(v)
 	State.SilentHitChance = v
-end)
+end, "SilentHitChance")
 addSlider(silentPage, "Silent Prediction", 0, 0.35, State.SilentPrediction, 0.01, 7, function(v)
 	State.SilentPrediction = v
-end)
-addToggle(silentPage, "Silent Team Check", "Игнорировать игроков своей команды", true, 8, function(v)
+end, "SilentPrediction")
+addToggle(silentPage, "Silent Team Check", "Игнорировать игроков своей команды", State.SilentTeamCheck, 8, function(v)
 	State.SilentTeamCheck = v
-end)
-addToggle(silentPage, "Silent Wall Check", "Магнитить пули только если враг не за стеной", true, 9, function(v)
+end, "SilentTeamCheck")
+addToggle(silentPage, "Silent Wall Check", "Магнитить пули только если враг не за стеной", State.SilentWallCheck, 9, function(v)
 	State.SilentWallCheck = v
-end)
+end, "SilentWallCheck")
 
 -- Rage
 addSection(ragePage, "Боевые Rage-функции", 1)
-addToggle(ragePage, "Hitbox Expander", "Увеличивает хитбоксы живых противников", false, 2, function(v) State.HitboxEnabled = v end)
-addCycle(ragePage, "Hitbox Part", HITBOX_PARTS, State.HitboxPart, 3, function(v) State.HitboxPart = v end)
-addSlider(ragePage, "Hitbox Size", 2, 22, State.HitboxSize, 1, 4, function(v) State.HitboxSize = v end)
-addSlider(ragePage, "Hitbox Transparency", 0.1, 1.0, State.HitboxTransparency, 0.05, 5, function(v) State.HitboxTransparency = v end)
-addToggle(ragePage, "Rapid Fire", "Быстрая стрельба при удержании ЛКМ", false, 6, function(v) State.RapidFireEnabled = v end)
-addSlider(ragePage, "Rapid Fire Delay", 0.01, 0.25, State.RapidFireDelay, 0.01, 7, function(v) State.RapidFireDelay = v end)
-addToggle(ragePage, "Auto Fire on Visible", "Авто-выстрел при появлении цели в FOV", false, 8, function(v) State.AutoFireVisible = v end)
-addToggle(ragePage, "Kill Aura (Close Range)", "Авто-удар оружием по врагам вблизи", false, 9, function(v) State.KillAuraEnabled = v end)
-addSlider(ragePage, "Kill Aura Range", 6, 35, State.KillAuraRange, 1, 10, function(v) State.KillAuraRange = v end)
-addToggle(ragePage, "Target Orbit", "Кружит вокруг ближайшего живого врага", false, 11, function(v) State.OrbitTargetEnabled = v end)
-addSlider(ragePage, "Orbit Radius", 4, 24, State.OrbitRadius, 1, 12, function(v) State.OrbitRadius = v end)
-addSlider(ragePage, "Orbit Speed", 1, 18, State.OrbitSpeed, 1, 13, function(v) State.OrbitSpeed = v end)
+addToggle(ragePage, "Hitbox Expander", "Увеличивает хитбоксы живых противников", State.HitboxEnabled, 2, function(v) State.HitboxEnabled = v end, "HitboxEnabled")
+addCycle(ragePage, "Hitbox Part", HITBOX_PARTS, State.HitboxPart, 3, function(v) State.HitboxPart = v end, "HitboxPart")
+addSlider(ragePage, "Hitbox Size", 2, 22, State.HitboxSize, 1, 4, function(v) State.HitboxSize = v end, "HitboxSize")
+addSlider(ragePage, "Hitbox Transparency", 0.1, 1.0, State.HitboxTransparency, 0.05, 5, function(v) State.HitboxTransparency = v end, "HitboxTransparency")
+addToggle(ragePage, "Rapid Fire", "Быстрая стрельба при удержании ЛКМ", State.RapidFireEnabled, 6, function(v) State.RapidFireEnabled = v end, "RapidFireEnabled")
+addSlider(ragePage, "Rapid Fire Delay", 0.01, 0.25, State.RapidFireDelay, 0.01, 7, function(v) State.RapidFireDelay = v end, "RapidFireDelay")
+addToggle(ragePage, "Auto Fire on Visible", "Авто-выстрел при появлении цели в FOV", State.AutoFireVisible, 8, function(v) State.AutoFireVisible = v end, "AutoFireVisible")
+addToggle(ragePage, "Kill Aura (Close Range)", "Авто-удар оружием по врагам вблизи", State.KillAuraEnabled, 9, function(v) State.KillAuraEnabled = v end, "KillAuraEnabled")
+addSlider(ragePage, "Kill Aura Range", 6, 35, State.KillAuraRange, 1, 10, function(v) State.KillAuraRange = v end, "KillAuraRange")
+addToggle(ragePage, "Target Orbit", "Кружит вокруг ближайшего живого врага", State.OrbitTargetEnabled, 11, function(v) State.OrbitTargetEnabled = v end, "OrbitTargetEnabled")
+addSlider(ragePage, "Orbit Radius", 4, 24, State.OrbitRadius, 1, 12, function(v) State.OrbitRadius = v end, "OrbitRadius")
+addSlider(ragePage, "Orbit Speed", 1, 18, State.OrbitSpeed, 1, 13, function(v) State.OrbitSpeed = v end, "OrbitSpeed")
 
 addSection(ragePage, "Anti-Aim и движение", 14)
-addToggle(ragePage, "Spinbot (Anti-Aim)", "Быстрое вращение персонажа вокруг своей оси", false, 15, function(v) State.SpinbotEnabled = v end)
-addSlider(ragePage, "Spin Speed", 5, 100, State.SpinSpeed, 5, 16, function(v) State.SpinSpeed = v end)
-addToggle(ragePage, "Spectate Nearest Enemy", "Наводит камеру на ближайшего врага", false, 17, function(v) State.SpectateNearest = v end)
-addToggle(ragePage, "BunnyHop (Auto Jump)", "Автоматический прыжок на земле", false, 18, function(v) State.BHopEnabled = v end)
-addSlider(ragePage, "BHop Speed Boost", 1.0, 2.0, State.BHopBoost, 0.05, 19, function(v) State.BHopBoost = v end)
-addToggle(ragePage, "CFrame Speed Hack", "Ускоренный рывок по направлению движения", false, 20, function(v) State.CFrameSpeedEnabled = v end)
-addSlider(ragePage, "CFrame Speed Mult", 1.0, 3.0, State.CFrameSpeedMult, 0.1, 21, function(v) State.CFrameSpeedMult = v end)
-addToggle(ragePage, "Custom Gravity", "Меняет гравитацию в мире", false, 22, function(v)
+addToggle(ragePage, "Spinbot (Anti-Aim)", "Быстрое вращение персонажа вокруг своей оси", State.SpinbotEnabled, 15, function(v) State.SpinbotEnabled = v end, "SpinbotEnabled")
+addSlider(ragePage, "Spin Speed", 5, 100, State.SpinSpeed, 5, 16, function(v) State.SpinSpeed = v end, "SpinSpeed")
+addToggle(ragePage, "Spectate Nearest Enemy", "Наводит камеру на ближайшего врага", State.SpectateNearest, 17, function(v) State.SpectateNearest = v end, "SpectateNearest")
+addToggle(ragePage, "BunnyHop (Auto Jump)", "Автоматический прыжок на земле", State.BHopEnabled, 18, function(v) State.BHopEnabled = v end, "BHopEnabled")
+addSlider(ragePage, "BHop Speed Boost", 1.0, 2.0, State.BHopBoost, 0.05, 19, function(v) State.BHopBoost = v end, "BHopBoost")
+addToggle(ragePage, "CFrame Speed Hack", "Ускоренный рывок по направлению движения", State.CFrameSpeedEnabled, 20, function(v) State.CFrameSpeedEnabled = v end, "CFrameSpeedEnabled")
+addSlider(ragePage, "CFrame Speed Mult", 1.0, 3.0, State.CFrameSpeedMult, 0.1, 21, function(v) State.CFrameSpeedMult = v end, "CFrameSpeedMult")
+addToggle(ragePage, "Custom Gravity", "Меняет гравитацию в мире", State.GravityOverride, 22, function(v)
 	State.GravityOverride = v
 	applyGravity(v, State.GravityValue)
-end)
+end, "GravityOverride")
 addSlider(ragePage, "Gravity Value", 20, 250, State.GravityValue, 5, 23, function(v)
 	State.GravityValue = v
 	if State.GravityOverride then
 		applyGravity(true, v)
 	end
-end)
-addToggle(ragePage, "Anti-Ragdoll / Recover", "Защита от падения в Ragdoll", false, 24, function(v) State.AntiRagdollEnabled = v end)
-addToggle(ragePage, "NoClip", "Прохождение сквозь стены и препятствия", false, 25, function(v) State.NoClipEnabled = v end)
-addToggle(ragePage, "Fly Mode", "Полёт на WASD + Space / LeftShift", false, 26, function(v) State.FlyEnabled = v end)
-addSlider(ragePage, "Fly Speed", 20, 150, State.FlySpeed, 5, 27, function(v) State.FlySpeed = v end)
+end, "GravityValue")
+addToggle(ragePage, "Anti-Ragdoll / Recover", "Защита от падения в Ragdoll", State.AntiRagdollEnabled, 24, function(v) State.AntiRagdollEnabled = v end, "AntiRagdollEnabled")
+addToggle(ragePage, "NoClip", "Прохождение сквозь стены и препятствия", State.NoClipEnabled, 25, function(v) State.NoClipEnabled = v end, "NoClipEnabled")
+addToggle(ragePage, "Fly Mode", "Полёт на WASD + Space / LeftShift", State.FlyEnabled, 26, function(v) State.FlyEnabled = v end, "FlyEnabled")
+addSlider(ragePage, "Fly Speed", 20, 150, State.FlySpeed, 5, 27, function(v) State.FlySpeed = v end, "FlySpeed")
 
 -- ESP
 addSection(espPage, "Все виды ESP", 1)
-addToggle(espPage, "Master ESP", "Включает ESP для живых противников", false, 2, function(v) State.ESPEnabled = v end)
-addToggle(espPage, "Box ESP", "Полная 2D-рамка", true, 3, function(v) State.BoxESP = v end)
-addToggle(espPage, "Corner Box ESP", "Угловые рамки", false, 4, function(v) State.CornerBoxESP = v end)
-addToggle(espPage, "Tracer ESP", "Линии к противникам", true, 5, function(v) State.TracerESP = v end)
-addCycle(espPage, "Tracer Origin", TRACER_ORIGINS, State.TracerOrigin, 6, function(v) State.TracerOrigin = v end)
-addToggle(espPage, "Skeleton ESP", "Линии по суставам и частям тела", true, 7, function(v) State.SkeletonESP = v end)
-addToggle(espPage, "Name + HP + Distance", "Имя, здоровье и дистанция", true, 8, function(v) State.InfoESP = v end)
-addToggle(espPage, "ESP Team Check", "Скрывать игроков своей команды", true, 9, function(v) State.ESPTeamCheck = v end)
-addSlider(espPage, "Max ESP Distance", 100, 2500, State.ESPMaxDist, 50, 10, function(v) State.ESPMaxDist = v end)
+addToggle(espPage, "Master ESP", "Включает ESP для живых противников", State.ESPEnabled, 2, function(v) State.ESPEnabled = v end, "ESPEnabled")
+addToggle(espPage, "Box ESP", "Полная 2D-рамка", State.BoxESP, 3, function(v) State.BoxESP = v end, "BoxESP")
+addToggle(espPage, "Corner Box ESP", "Угловые рамки", State.CornerBoxESP, 4, function(v) State.CornerBoxESP = v end, "CornerBoxESP")
+addToggle(espPage, "Tracer ESP", "Линии к противникам", State.TracerESP, 5, function(v) State.TracerESP = v end, "TracerESP")
+addCycle(espPage, "Tracer Origin", TRACER_ORIGINS, State.TracerOrigin, 6, function(v) State.TracerOrigin = v end, "TracerOrigin")
+addToggle(espPage, "Skeleton ESP", "Линии по суставам и частям тела", State.SkeletonESP, 7, function(v) State.SkeletonESP = v end, "SkeletonESP")
+addToggle(espPage, "Name + HP + Distance", "Имя, здоровье и дистанция", State.InfoESP, 8, function(v) State.InfoESP = v end, "InfoESP")
+addToggle(espPage, "ESP Team Check", "Скрывать игроков своей команды", State.ESPTeamCheck, 9, function(v) State.ESPTeamCheck = v end, "ESPTeamCheck")
+addSlider(espPage, "Max ESP Distance", 100, 2500, State.ESPMaxDist, 50, 10, function(v) State.ESPMaxDist = v end, "ESPMaxDist")
 
 -- 3D Skin Viewer
 addSection(skinPage, "3D просмотр вашего скина (тяните мышкой)", 1)
@@ -957,7 +1180,9 @@ skinCard.BackgroundTransparency = Theme.GlassAlpha
 skinCard.ClipsDescendants = true
 skinCard.Parent = skinPage
 addCorner(skinCard, 12)
-addStroke(skinCard, Theme.Stroke, 1.2, 0.35)
+local skinCardStroke = addStroke(skinCard, Theme.Stroke, 1.2, 0.35)
+table.insert(themedCards, skinCard)
+table.insert(themedStrokes, skinCardStroke)
 
 local vpFrame = Instance.new("ViewportFrame")
 vpFrame.Size = UDim2.new(1, -16, 1, -44)
@@ -967,6 +1192,7 @@ vpFrame.BackgroundTransparency = 0.25
 vpFrame.BorderSizePixel = 0
 vpFrame.Parent = skinCard
 addCorner(vpFrame, 10)
+table.insert(themedInputs, vpFrame)
 
 local skinHint = Instance.new("TextLabel")
 skinHint.Size = UDim2.new(1, -16, 0, 24)
@@ -1067,12 +1293,12 @@ UserInputService.InputChanged:Connect(function(inp)
 	end
 end)
 
-addToggle(skinPage, "Auto Rotate 3D Skin", "Автоматически вращает скин в окне", true, 3, function(v)
+addToggle(skinPage, "Auto Rotate 3D Skin", "Автоматически вращает скин в окне", State.SkinAutoRotate, 3, function(v)
 	State.SkinAutoRotate = v
-end)
+end, "SkinAutoRotate")
 addSlider(skinPage, "3D Rotation Speed", 5, 120, State.SkinRotateSpeed, 5, 4, function(v)
 	State.SkinRotateSpeed = v
-end)
+end, "SkinRotateSpeed")
 addAction(skinPage, "Обновить скин / Сбросить угол", 5, function()
 	skinYaw = 0
 	skinPitch = 8
@@ -1091,132 +1317,483 @@ end)
 
 -- Visuals / Extra
 addSection(visPage, "Внешний вид и размытие", 1)
-addToggle(visPage, "Background Blur", "Размывает фон за меню", true, 2, function(v)
+addToggle(visPage, "Background Blur", "Размывает фон за меню", State.BlurEnabled, 2, function(v)
 	State.BlurEnabled = v
 	updateBlur()
-end)
+end, "BlurEnabled")
 addSlider(visPage, "Blur Size", 2, 32, State.BlurSize, 1, 3, function(v)
 	State.BlurSize = v
 	updateBlur()
-end)
+end, "BlurSize")
 addSlider(visPage, "Transparency", 0.05, 0.65, Theme.GlassAlpha, 0.05, 4, function(v)
 	Theme.GlassAlpha = v
 	hub.BackgroundTransparency = v
-	keyWin.BackgroundTransparency = v
 end)
 
 addSection(visPage, "Дополнительные функции", 5)
-addToggle(visPage, "Custom Crosshair", "Кастомный прицел по центру экрана", false, 6, function(v) State.CrosshairEnabled = v end)
-addSlider(visPage, "Crosshair Size", 4, 24, State.CrosshairSize, 1, 7, function(v) State.CrosshairSize = v end)
-addToggle(visPage, "Target Radar HUD", "Показывает число врагов и Silent-цель", false, 8, function(v) State.RadarHudEnabled = v end)
-addToggle(visPage, "Fullbright", "Яркое освещение без теней", false, 9, function(v)
+addToggle(visPage, "Custom Crosshair", "Кастомный прицел по центру экрана", State.CrosshairEnabled, 6, function(v) State.CrosshairEnabled = v end, "CrosshairEnabled")
+addSlider(visPage, "Crosshair Size", 4, 24, State.CrosshairSize, 1, 7, function(v) State.CrosshairSize = v end, "CrosshairSize")
+addToggle(visPage, "Target Radar HUD", "Показывает число врагов и Silent-цель", State.RadarHudEnabled, 8, function(v) State.RadarHudEnabled = v end, "RadarHudEnabled")
+addToggle(visPage, "Fullbright", "Яркое освещение без теней", State.FullbrightEnabled, 9, function(v)
 	State.FullbrightEnabled = v
 	applyFullbright(v)
-end)
-addToggle(visPage, "Anti-AFK", "Защита от кика за бездействие", false, 10, function(v) State.AntiAFKEnabled = v end)
-addToggle(visPage, "Custom FOV", "Меняет угол обзора камеры", false, 11, function(v) State.FOVOverride = v end)
-addSlider(visPage, "Camera FOV", 60, 120, State.CustomFOV, 1, 12, function(v) State.CustomFOV = v end)
-addToggle(visPage, "Custom WalkSpeed", "Меняет скорость бега", false, 13, function(v) State.WalkSpeedBoost = v end)
-addSlider(visPage, "WalkSpeed", 16, 75, State.WalkSpeedVal, 1, 14, function(v) State.WalkSpeedVal = v end)
+end, "FullbrightEnabled")
+addToggle(visPage, "Anti-AFK", "Защита от кика за бездействие", State.AntiAFKEnabled, 10, function(v) State.AntiAFKEnabled = v end, "AntiAFKEnabled")
+addToggle(visPage, "Custom FOV", "Меняет угол обзора камеры", State.FOVOverride, 11, function(v) State.FOVOverride = v end, "FOVOverride")
+addSlider(visPage, "Camera FOV", 60, 120, State.CustomFOV, 1, 12, function(v) State.CustomFOV = v end, "CustomFOV")
+addToggle(visPage, "Custom WalkSpeed", "Меняет скорость бега", State.WalkSpeedBoost, 13, function(v) State.WalkSpeedBoost = v end, "WalkSpeedBoost")
+addSlider(visPage, "WalkSpeed", 16, 75, State.WalkSpeedVal, 1, 14, function(v) State.WalkSpeedVal = v end, "WalkSpeedVal")
 
-local function setKeyWin(open)
-	if State.KeyUnlocked then
-		return
+-- ============================================================================
+-- CONFIG SYSTEM + AUTO-SAVE + SETTINGS TAB
+-- ============================================================================
+local memoryConfigs = {}
+local autoSaveToken = 0
+local syncingUI = false
+
+local fovStroke = nil
+local silentFovStroke = nil
+
+local function applyColorTheme(themeName)
+	local pal = COLOR_THEMES[themeName] or COLOR_THEMES["Astral Violet"]
+	State.ColorTheme = themeName
+	Theme.BgMain = pal.BgMain
+	Theme.BgCard = pal.BgCard
+	Theme.BgCardHover = pal.BgCardHover
+	Theme.BgInput = pal.BgInput
+	Theme.Stroke = pal.Stroke
+	Theme.Accent = pal.Accent
+	Theme.AccentBright = pal.AccentBright
+	Theme.SilentAccent = pal.SilentAccent
+
+	hub.BackgroundColor3 = Theme.BgMain
+	splashBg.BackgroundColor3 = Theme.BgMain
+	splashCard.BackgroundColor3 = Theme.BgCard
+	glowOrb1.BackgroundColor3 = Theme.Accent
+	glowOrb2.BackgroundColor3 = Theme.SilentAccent
+	splashTag.TextColor3 = Theme.AccentBright
+	splashPct.TextColor3 = Theme.AccentBright
+	splashBarFill.BackgroundColor3 = Theme.AccentBright
+	splashBarBg.BackgroundColor3 = Theme.BgInput
+	splashStroke.Color = Theme.Stroke
+
+	hubHeader.BackgroundColor3 = Theme.BgCard
+	sideBar.BackgroundColor3 = Theme.BgCard
+	triggerBtn.BackgroundColor3 = Theme.BgCard
+	triggerBtn.TextColor3 = Theme.AccentBright
+	radarCard.BackgroundColor3 = Theme.BgCard
+	watermarkCard.BackgroundColor3 = Theme.BgCard
+	statusBadge.BackgroundColor3 = Theme.BgInput
+	minBtn.BackgroundColor3 = Theme.BgInput
+	closeHubBtn.BackgroundColor3 = Theme.BgInput
+	hubDot.BackgroundColor3 = Theme.AccentBright
+	radarTitle.TextColor3 = Theme.AccentBright
+
+	hubStroke.Color = Theme.Stroke
+	trigStroke.Color = Theme.Accent
+	radarStroke.Color = Theme.Stroke
+	wmStroke.Color = Theme.Accent
+
+	for _, f in ipairs(themedCards) do
+		if f and f.Parent then
+			f.BackgroundColor3 = Theme.BgCard
+		end
 	end
-	State.KeyWinVisible = open
-	keyWin.Visible = open
-	updateBlur()
+	for _, s in ipairs(themedStrokes) do
+		if s and s.Parent then
+			s.Color = Theme.Stroke
+		end
+	end
+	for _, inp in ipairs(themedInputs) do
+		if inp and inp.Parent then
+			inp.BackgroundColor3 = inp:IsA("TextButton") and inp.BackgroundColor3 == Theme.BgCardHover and Theme.BgCardHover or Theme.BgInput
+		end
+	end
+	for _, item in ipairs(themedAccents) do
+		if item.obj and item.obj.Parent then
+			item.obj[item.prop] = Theme[item.key]
+		end
+	end
+	for id, tb in pairs(tabBtns) do
+		local sel = (id == State.ActiveTab)
+		tb.BackgroundColor3 = sel and Theme.BgCardHover or Theme.BgInput
+		tb.TextColor3 = sel and Theme.TextMain or Theme.TextMuted
+	end
+	if fovStroke then
+		fovStroke.Color = Theme.AccentBright
+	end
+	if silentFovStroke and not silentTargetPart then
+		silentFovStroke.Color = Theme.SilentAccent
+	end
+	for _, bar in ipairs({ chTop, chBot, chLeft, chRight }) do
+		bar.BackgroundColor3 = Theme.AccentBright
+	end
 end
 
-local function setHub(open)
-	if not State.KeyUnlocked then
-		setKeyWin(not State.KeyWinVisible)
+local function applyCompactMode(compact)
+	State.CompactMode = compact
+	local targetSize = compact and HUB_COMPACT_SIZE or HUB_NORMAL_SIZE
+	if State.Minimized then
+		hub.Size = UDim2.new(targetSize.X.Scale, targetSize.X.Offset, 0, 48)
+	else
+		hub.Size = targetSize
+	end
+end
+
+local function getConfigPath(profileName)
+	local safe = tostring(profileName or "Default"):gsub("[^%w_%-]", "_")
+	return "AstralHub/profile_" .. safe .. ".json"
+end
+
+local function serializeConfig()
+	local payload = {}
+	for k, v in pairs(DEFAULT_STATE) do
+		if k ~= "HubReady" and k ~= "HubVisible" and k ~= "Minimized" then
+			payload[k] = State[k]
+		end
+	end
+	payload.GlassAlpha = Theme.GlassAlpha
+	return HttpService:JSONEncode(payload)
+end
+
+local function syncAllUI()
+	syncingUI = true
+	for _, fn in ipairs(uiSyncList) do
+		pcall(fn)
+	end
+	syncingUI = false
+end
+
+local function applySerializedConfig(rawJson, profileOverride)
+	if typeof(rawJson) ~= "string" or rawJson == "" then
+		return false
+	end
+	local ok, decoded = pcall(function()
+		return HttpService:JSONDecode(rawJson)
+	end)
+	if not ok or typeof(decoded) ~= "table" then
+		return false
+	end
+
+	for k, defVal in pairs(DEFAULT_STATE) do
+		if k ~= "HubReady" and k ~= "HubVisible" and k ~= "Minimized" then
+			if decoded[k] ~= nil and typeof(decoded[k]) == typeof(defVal) then
+				State[k] = decoded[k]
+			end
+		end
+	end
+	if profileOverride then
+		State.ConfigProfile = profileOverride
+	end
+	if typeof(decoded.GlassAlpha) == "number" then
+		Theme.GlassAlpha = math.clamp(decoded.GlassAlpha, 0.05, 0.65)
+		hub.BackgroundTransparency = Theme.GlassAlpha
+	end
+
+	applyColorTheme(State.ColorTheme)
+	applyCompactMode(State.CompactMode)
+	applyFullbright(State.FullbrightEnabled)
+	applyGravity(State.GravityOverride, State.GravityValue)
+	updateBlur()
+	syncAllUI()
+	return true
+end
+
+local function saveConfig(profileName, silentNotify)
+	local prof = profileName or State.ConfigProfile or "Default"
+	local encoded = serializeConfig()
+	memoryConfigs[prof] = encoded
+
+	local wroteFile = false
+	if typeof(writefile) == "function" then
+		pcall(function()
+			if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+				if not isfolder("AstralHub") then
+					makefolder("AstralHub")
+				end
+			end
+			writefile(getConfigPath(prof), encoded)
+			wroteFile = true
+		end)
+	end
+
+	if not silentNotify then
+		pushNotify(
+			"Конфиг сохранён",
+			string.format("Профиль: %s (%s)", prof, wroteFile and "файл" or "память")
+		)
+	end
+end
+
+local function loadConfig(profileName, silentNotify)
+	local prof = profileName or State.ConfigProfile or "Default"
+	local raw = nil
+
+	if typeof(isfile) == "function" and typeof(readfile) == "function" then
+		pcall(function()
+			local p = getConfigPath(prof)
+			if isfile(p) then
+				raw = readfile(p)
+			end
+		end)
+	end
+
+	if not raw then
+		raw = memoryConfigs[prof]
+	end
+
+	if not raw then
+		if not silentNotify then
+			pushNotify("Конфиг не найден", "Профиль '" .. prof .. "' ещё не сохранён.", true)
+		end
+		return false
+	end
+
+	if applySerializedConfig(raw, prof) then
+		if not silentNotify then
+			pushNotify("Конфиг загружен", "Применён профиль: " .. prof)
+		end
+		return true
+	else
+		if not silentNotify then
+			pushNotify("Ошибка конфига", "Не удалось прочитать профиль: " .. prof, true)
+		end
+		return false
+	end
+end
+
+scheduleAutoSave = function()
+	if syncingUI or not State.AutoSaveEnabled or not State.HubReady then
+		return
+	end
+	autoSaveToken += 1
+	local curToken = autoSaveToken
+	task.delay(0.6, function()
+		if curToken == autoSaveToken and State.AutoSaveEnabled then
+			saveConfig(State.ConfigProfile, true)
+		end
+	end)
+end
+
+-- Settings Page Sections
+addSection(settingsPage, "Конфиги и автосохранение", 1)
+addCycle(settingsPage, "Config Profile", CONFIG_PROFILES, State.ConfigProfile, 2, function(v)
+	State.ConfigProfile = v
+	loadConfig(v, false)
+end, "ConfigProfile")
+
+addToggle(settingsPage, "Auto-Save Settings", "Автосохранение изменений с защитой от спама", State.AutoSaveEnabled, 3, function(v)
+	State.AutoSaveEnabled = v
+	if v then
+		saveConfig(State.ConfigProfile, true)
+	end
+end, "AutoSaveEnabled")
+
+addAction(settingsPage, "💾  Сохранить текущий конфиг", 4, function()
+	saveConfig(State.ConfigProfile, false)
+end)
+
+addAction(settingsPage, "📂  Загрузить выбранный конфиг", 5, function()
+	loadConfig(State.ConfigProfile, false)
+end)
+
+addAction(settingsPage, "↺  Сбросить настройки к дефолту", 6, function()
+	local keepOpen = State.HubVisible
+	local keepProfile = State.ConfigProfile
+	State = cloneTable(DEFAULT_STATE)
+	State.HubReady = true
+	State.HubVisible = keepOpen
+	State.ConfigProfile = keepProfile
+	Theme.GlassAlpha = 0.22
+	hub.BackgroundTransparency = Theme.GlassAlpha
+	applyColorTheme(State.ColorTheme)
+	applyCompactMode(State.CompactMode)
+	applyFullbright(false)
+	applyGravity(false, origGravity)
+	updateBlur()
+	syncAllUI()
+	if State.AutoSaveEnabled then
+		saveConfig(State.ConfigProfile, true)
+	end
+	pushNotify("Сброс выполнен", "Все параметры возвращены к значениям по умолчанию.")
+end)
+
+addSection(settingsPage, "Экспорт и импорт конфига (JSON)", 7)
+
+local cfgBoxCard = Instance.new("Frame")
+cfgBoxCard.Size = UDim2.new(1, 0, 0, 82)
+cfgBoxCard.LayoutOrder = 8
+cfgBoxCard.BackgroundColor3 = Theme.BgCard
+cfgBoxCard.BackgroundTransparency = Theme.GlassAlpha
+cfgBoxCard.Parent = settingsPage
+addCorner(cfgBoxCard, 10)
+local cfgBoxStroke = addStroke(cfgBoxCard, Theme.Stroke, 1, 0.45)
+table.insert(themedCards, cfgBoxCard)
+table.insert(themedStrokes, cfgBoxStroke)
+
+local cfgBox = Instance.new("TextBox")
+cfgBox.Size = UDim2.new(1, -16, 1, -16)
+cfgBox.Position = UDim2.new(0, 8, 0, 8)
+cfgBox.BackgroundColor3 = Theme.BgInput
+cfgBox.BackgroundTransparency = 0.2
+cfgBox.PlaceholderText = "Вставьте JSON-строку конфига сюда или нажмите Экспорт..."
+cfgBox.PlaceholderColor3 = Theme.TextMuted
+cfgBox.Text = ""
+cfgBox.TextColor3 = Theme.TextMain
+cfgBox.Font = Enum.Font.Code
+cfgBox.TextSize = 11
+cfgBox.MultiLine = true
+cfgBox.TextWrapped = true
+cfgBox.ClearTextOnFocus = false
+cfgBox.Parent = cfgBoxCard
+addCorner(cfgBox, 8)
+table.insert(themedInputs, cfgBox)
+
+addAction(settingsPage, "📤  Экспортировать конфиг в строку", 9, function()
+	local raw = serializeConfig()
+	cfgBox.Text = raw
+	if typeof(setclipboard) == "function" then
+		pcall(setclipboard, raw)
+		pushNotify("Экспорт готов", "JSON скопирован в буфер обмена и вставлен в поле.")
+	else
+		pushNotify("Экспорт готов", "JSON сгенерирован в текстовом поле.")
+	end
+end)
+
+addAction(settingsPage, "📥  Импортировать конфиг из строки", 10, function()
+	if applySerializedConfig(cfgBox.Text, State.ConfigProfile) then
+		if State.AutoSaveEnabled then
+			saveConfig(State.ConfigProfile, true)
+		end
+		pushNotify("Импорт успешен", "Конфиг применён из строки.")
+	else
+		pushNotify("Ошибка импорта", "Некорректный JSON конфига.", true)
+	end
+end)
+
+addSection(settingsPage, "Кастомизация, HUD и производительность", 11)
+addCycle(settingsPage, "Color Theme", THEME_NAMES, State.ColorTheme, 12, function(v)
+	applyColorTheme(v)
+end, "ColorTheme")
+
+addToggle(settingsPage, "Compact UI Mode", "Компактный размер главного окна меню", State.CompactMode, 13, function(v)
+	applyCompactMode(v)
+end, "CompactMode")
+
+addToggle(settingsPage, "Notifications", "Показывать всплывающие уведомления", State.NotificationsEnabled, 14, function(v)
+	State.NotificationsEnabled = v
+end, "NotificationsEnabled")
+
+addToggle(settingsPage, "Watermark HUD", "Верхняя панель с FPS и статусом хаба", State.WatermarkEnabled, 15, function(v)
+	State.WatermarkEnabled = v
+end, "WatermarkEnabled")
+
+addToggle(settingsPage, "FPS Saver Mode", "Экономит ресурсы, когда меню закрыто", State.FPSSaverEnabled, 16, function(v)
+	State.FPSSaverEnabled = v
+end, "FPSSaverEnabled")
+
+addAction(settingsPage, "🛑  Полная выгрузка ASTRAL HUB", 17, function()
+	State.HubReady = false
+	State.HubVisible = false
+	splashActive = false
+	State.FlyEnabled = false
+	State.NoClipEnabled = false
+	State.SpectateNearest = false
+	State.SpinbotEnabled = false
+	State.OrbitTargetEnabled = false
+	applyFullbright(false)
+	applyGravity(false, origGravity)
+	if Camera then
+		Camera.CameraType = Enum.CameraType.Custom
+	end
+	if blurEffect then
+		blurEffect:Destroy()
+	end
+	if gui then
+		gui:Destroy()
+	end
+end)
+
+-- ============================================================================
+-- WINDOW & SMOOTH AUTO-OPEN LOGIC
+-- ============================================================================
+local function setHub(open, instant)
+	if not State.HubReady then
 		return
 	end
 	State.HubVisible = open
-	hub.Visible = open
-	updateBlur()
-	if open and State.ActiveTab == "Skin3D" and rebuildSkinPreview then
-		rebuildSkinPreview()
-	end
-end
 
-local function submitKey()
-	local entered = string.match(keyBox.Text, "^%s*(.-)%s*$") or ""
-	if entered == CORRECT_KEY then
-		State.KeyUnlocked = true
-		State.KeyWinVisible = false
-		keyWin.Visible = false
-		State.HubVisible = true
-		State.Minimized = false
-		sideBar.Visible = true
-		bodyArea.Visible = true
-		hub.Size = UDim2.new(0, 720, 0, 475)
+	if open then
 		hub.Visible = true
-		triggerBtn.Text = "✦ ASTRAL [RSH]"
-		updateBlur()
-		if rebuildSkinPreview then
+		if instant then
+			hub.Position = UDim2.new(0.5, 0, 0.5, 0)
+			hubScale.Scale = 1
+		else
+			hub.Position = UDim2.new(0.5, 0, 0.5, 22)
+			hubScale.Scale = 0.94
+			TweenService:Create(hub, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+				Position = UDim2.new(0.5, 0, 0.5, 0)
+			}):Play()
+			TweenService:Create(hubScale, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+				Scale = 1
+			}):Play()
+		end
+		if State.ActiveTab == "Skin3D" and rebuildSkinPreview then
 			rebuildSkinPreview()
 		end
-		pushNotify("ASTRAL HUB", "Доступ открыт. Скрыть/открыть: RightShift")
 	else
-		keyBoxStroke.Color = Theme.Error
-		pushNotify("Неверный ключ", "Проверьте введённый ключ.", true)
-		task.delay(0.75, function()
-			keyBoxStroke.Color = Theme.Stroke
-		end)
+		if instant then
+			hub.Visible = false
+			hubScale.Scale = 0.94
+		else
+			local outPos = TweenService:Create(hub, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.5, 0, 0.5, 18)
+			})
+			local outScale = TweenService:Create(hubScale, TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+				Scale = 0.95
+			})
+			outPos:Play()
+			outScale:Play()
+			outPos.Completed:Once(function()
+				if not State.HubVisible then
+					hub.Visible = false
+				end
+			end)
+		end
 	end
+
+	updateBlur()
 end
 
-keySubmit.MouseButton1Click:Connect(submitKey)
-keyBox.FocusLost:Connect(function(enter)
-	if enter then
-		submitKey()
-	end
-end)
-
-keyClose.MouseButton1Click:Connect(function()
-	setKeyWin(false)
-end)
-
 triggerBtn.MouseButton1Click:Connect(function()
-	if not State.KeyUnlocked then
-		setKeyWin(not State.KeyWinVisible)
-	else
-		setHub(not State.HubVisible)
-	end
+	setHub(not State.HubVisible, false)
 end)
 
 minBtn.MouseButton1Click:Connect(function()
 	State.Minimized = not State.Minimized
 	sideBar.Visible = not State.Minimized
 	bodyArea.Visible = not State.Minimized
-	hub.Size = State.Minimized and UDim2.new(0, 720, 0, 48) or UDim2.new(0, 720, 0, 475)
+	local baseSize = State.CompactMode and HUB_COMPACT_SIZE or HUB_NORMAL_SIZE
+	hub.Size = State.Minimized and UDim2.new(baseSize.X.Scale, baseSize.X.Offset, 0, 48) or baseSize
 	updateBlur()
 end)
 
 closeHubBtn.MouseButton1Click:Connect(function()
-	setHub(false)
+	setHub(false, false)
 	pushNotify("ASTRAL HUB скрыт", "Нажмите RightShift или кнопку слева.")
 end)
 
 UserInputService.InputBegan:Connect(function(inp, gp)
-	if gp then
+	if gp or not State.HubReady then
 		return
 	end
-	if inp.KeyCode == KEY_HOTKEY then
-		if not State.KeyUnlocked then
-			setKeyWin(not State.KeyWinVisible)
-		else
-			setHub(not State.HubVisible)
-		end
-	elseif inp.KeyCode == HUB_HOTKEY and State.KeyUnlocked then
-		setHub(not State.HubVisible)
+	if inp.KeyCode == HUB_HOTKEY or inp.KeyCode == ALT_HOTKEY then
+		setHub(not State.HubVisible, false)
 	end
 end)
 
 LocalPlayer.Idled:Connect(function()
-	if State.KeyUnlocked and State.AntiAFKEnabled then
+	if State.HubReady and State.AntiAFKEnabled then
 		local cam = Workspace.CurrentCamera
 		if cam then
 			cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(0.001), 0)
@@ -1390,7 +1967,7 @@ fovCircle.BackgroundTransparency = 1
 fovCircle.Visible = false
 fovCircle.Parent = gui
 addCorner(fovCircle, 999)
-addStroke(fovCircle, Theme.AccentBright, 1.5, 0.25)
+fovStroke = addStroke(fovCircle, Theme.AccentBright, 1.5, 0.25)
 
 local silentFovCircle = Instance.new("Frame")
 silentFovCircle.Name = "SilentFOVCircle"
@@ -1399,7 +1976,7 @@ silentFovCircle.BackgroundTransparency = 1
 silentFovCircle.Visible = false
 silentFovCircle.Parent = gui
 addCorner(silentFovCircle, 999)
-local silentFovStroke = addStroke(silentFovCircle, Theme.SilentAccent, 1.6, 0.2)
+silentFovStroke = addStroke(silentFovCircle, Theme.SilentAccent, 1.6, 0.2)
 
 local lockedPart = nil
 local silentTargetPart = nil
@@ -1412,6 +1989,10 @@ local lastAuraHit = 0
 local spinAngle = 0
 local orbitAngle = 0
 local flyBodyVel = nil
+local espStepAccum = 0
+local fpsAccum = 0
+local fpsFrames = 0
+local currentFPS = 60
 
 local function canSeePart(fromPos, targetPart, targetChar, checkWall)
 	if not checkWall then
@@ -1474,7 +2055,7 @@ local function getSilentBodyPoint(char, partMode)
 end
 
 local function updateSilentTarget(mousePos)
-	if not State.KeyUnlocked or not State.SilentEnabled then
+	if not State.HubReady or not State.SilentEnabled then
 		silentTargetPart = nil
 		silentTargetPos = nil
 		silentTargetPlayerName = "None"
@@ -1528,7 +2109,7 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 		local method = getnamecallmethod()
 		local args = { ... }
 
-		if State.KeyUnlocked and State.SilentEnabled and silentTargetPos and silentTargetPart and not checkcaller() then
+		if State.HubReady and State.SilentEnabled and silentTargetPos and silentTargetPart and not checkcaller() then
 			if self == Workspace and method == "Raycast" and typeof(args[1]) == "Vector3" and typeof(args[2]) == "Vector3" then
 				if passHitChance() then
 					local origin = args[1]
@@ -1551,7 +2132,7 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 
 	local oldIndex
 	oldIndex = hookmetamethod(game, "__index", function(self, key)
-		if State.KeyUnlocked and State.SilentEnabled and silentTargetPos and silentTargetPart and self == Mouse and not checkcaller() then
+		if State.HubReady and State.SilentEnabled and silentTargetPos and silentTargetPart and self == Mouse and not checkcaller() then
 			if key == "Hit" and passHitChance() then
 				return CFrame.new(silentTargetPos)
 			elseif key == "Target" and passHitChance() then
@@ -1635,13 +2216,42 @@ local function findAimTarget(mousePos)
 	return best
 end
 
+local function buildActiveSummary()
+	local tags = {}
+	if State.AimEnabled then table.insert(tags, "AIM") end
+	if State.SilentEnabled then table.insert(tags, "SILENT") end
+	if State.ESPEnabled then table.insert(tags, "ESP") end
+	if State.FlyEnabled then table.insert(tags, "FLY") end
+	if State.NoClipEnabled then table.insert(tags, "NOCLIP") end
+	if #tags == 0 then
+		return "IDLE"
+	end
+	return table.concat(tags, "+")
+end
+
 RunService.RenderStepped:Connect(function(dt)
+	if not gui or not gui.Parent then
+		return
+	end
 	Camera = Workspace.CurrentCamera
 	if not Camera then
 		return
 	end
 
-	if State.KeyUnlocked and State.ActiveTab == "Skin3D" and State.SkinAutoRotate and not vpDragging then
+	fpsAccum += dt
+	fpsFrames += 1
+	if fpsAccum >= 0.4 then
+		currentFPS = math.floor(fpsFrames / fpsAccum + 0.5)
+		fpsAccum = 0
+		fpsFrames = 0
+	end
+
+	watermarkCard.Visible = State.HubReady and State.WatermarkEnabled
+	if watermarkCard.Visible then
+		wmLabel.Text = string.format("✦ ASTRAL HUB  •  %s  •  %d FPS", buildActiveSummary(), currentFPS)
+	end
+
+	if State.HubReady and State.ActiveTab == "Skin3D" and State.SkinAutoRotate and not vpDragging then
 		skinYaw = (skinYaw + State.SkinRotateSpeed * dt) % 360
 		updateSkinCamera()
 	end
@@ -1651,7 +2261,7 @@ RunService.RenderStepped:Connect(function(dt)
 
 	updateSilentTarget(mousePos)
 
-	chHolder.Visible = State.KeyUnlocked and State.CrosshairEnabled
+	chHolder.Visible = State.HubReady and State.CrosshairEnabled
 	if chHolder.Visible then
 		local len = State.CrosshairSize
 		local gap = math.max(3, math.floor(len * 0.4))
@@ -1665,14 +2275,14 @@ RunService.RenderStepped:Connect(function(dt)
 		chRight.Position = UDim2.new(0.5, gap, 0.5, -1)
 	end
 
-	fovCircle.Visible = State.KeyUnlocked and State.FOVEnabled and (State.AimEnabled or State.AutoFireVisible)
+	fovCircle.Visible = State.HubReady and State.FOVEnabled and (State.AimEnabled or State.AutoFireVisible)
 	if fovCircle.Visible then
 		local diam = State.FOVRadius * 2
 		fovCircle.Size = UDim2.new(0, diam, 0, diam)
 		fovCircle.Position = UDim2.new(0, mousePos.X, 0, mousePos.Y)
 	end
 
-	silentFovCircle.Visible = State.KeyUnlocked and State.SilentEnabled and State.SilentFOVEnabled
+	silentFovCircle.Visible = State.HubReady and State.SilentEnabled and State.SilentFOVEnabled
 	if silentFovCircle.Visible then
 		local sDiam = State.SilentFOVRadius * 2
 		silentFovCircle.Size = UDim2.new(0, sDiam, 0, sDiam)
@@ -1705,12 +2315,12 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 
-	radarCard.Visible = State.KeyUnlocked and State.RadarHudEnabled
+	radarCard.Visible = State.HubReady and State.RadarHudEnabled
 	if radarCard.Visible then
 		radarInfo.Text = string.format("Enemies: %d | Silent: %s", enemyCount, silentTargetPlayerName)
 	end
 
-	if State.KeyUnlocked then
+	if State.HubReady then
 		if State.FOVOverride then
 			Camera.FieldOfView = State.CustomFOV
 		end
@@ -1848,7 +2458,7 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 
-	if State.KeyUnlocked and State.SpectateNearest and nearestEnemyHRP then
+	if State.HubReady and State.SpectateNearest and nearestEnemyHRP then
 		Camera.CameraType = Enum.CameraType.Scriptable
 		local backPos = nearestEnemyHRP.Position - (nearestEnemyHRP.CFrame.LookVector * 8) + Vector3.new(0, 3, 0)
 		Camera.CFrame = Camera.CFrame:Lerp(CFrame.lookAt(backPos, nearestEnemyHRP.Position), 0.25)
@@ -1856,7 +2466,7 @@ RunService.RenderStepped:Connect(function(dt)
 		Camera.CameraType = Enum.CameraType.Custom
 	end
 
-	if State.KeyUnlocked and (State.AimEnabled or State.AutoFireVisible) then
+	if State.HubReady and (State.AimEnabled or State.AutoFireVisible) then
 		local rmb = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
 		local activeAim = (not State.AimHoldOnly) or rmb or State.AutoFireVisible
 		local part = activeAim and findAimTarget(mousePos) or nil
@@ -1899,6 +2509,13 @@ RunService.RenderStepped:Connect(function(dt)
 		lockedPart = nil
 	end
 
+	espStepAccum += dt
+	local espInterval = (State.FPSSaverEnabled and not State.HubVisible) and 0.04 or 0
+	if espStepAccum < espInterval then
+		return
+	end
+	espStepAccum = 0
+
 	local tracerOrigin = Vector2.new(vp.X * 0.5, vp.Y)
 	if State.TracerOrigin == "Center" then
 		tracerOrigin = Vector2.new(vp.X * 0.5, vp.Y * 0.5)
@@ -1922,7 +2539,7 @@ RunService.RenderStepped:Connect(function(dt)
 					and plr.Character:FindFirstChild("Head")
 					or hrp
 				if targetHB then
-					if State.KeyUnlocked and State.HitboxEnabled and alive and not sameTeamAim then
+					if State.HubReady and State.HitboxEnabled and alive and not sameTeamAim then
 						targetHB.Size = Vector3.new(State.HitboxSize, State.HitboxSize, State.HitboxSize)
 						targetHB.Transparency = State.HitboxTransparency
 						targetHB.CanCollide = false
@@ -1938,7 +2555,7 @@ RunService.RenderStepped:Connect(function(dt)
 				end
 			end
 
-			if not State.KeyUnlocked or not State.ESPEnabled or sameTeamESP or not alive or not hum or not hrp then
+			if not State.HubReady or not State.ESPEnabled or sameTeamESP or not alive or not hum or not hrp then
 				hideESPSet(s)
 			else
 				local dist3D = (hrp.Position - Camera.CFrame.Position).Magnitude
@@ -2029,4 +2646,79 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 		end
 	end
+end)
+
+-- ============================================================================
+-- BOOT SEQUENCE -> SPLASH -> SMOOTH AUTO OPEN
+-- ============================================================================
+local function setSplashProgress(targetPct, statusText)
+	if not splashBg or not splashBg.Parent then
+		return
+	end
+	splashStatus.Text = statusText
+	splashPct.Text = string.format("%d%%", targetPct)
+	TweenService:Create(splashBarFill, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Size = UDim2.new(math.clamp(targetPct / 100, 0, 1), 0, 1, 0)
+	}):Play()
+end
+
+task.spawn(function()
+	updateBlur()
+	TweenService:Create(splashScale, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+		Scale = 1
+	}):Play()
+
+	setSplashProgress(25, "Загрузка сохранённого конфига...")
+	loadConfig(State.ConfigProfile, true)
+	task.wait(0.26)
+
+	setSplashProgress(58, "Синхронизация интерфейса и визуальных слоёв...")
+	applyCompactMode(State.CompactMode)
+	sideBar.Visible = true
+	bodyArea.Visible = true
+	task.wait(0.26)
+
+	setSplashProgress(86, "Подготовка 3D-превью скина и ESP...")
+	if rebuildSkinPreview then
+		rebuildSkinPreview()
+	end
+	task.wait(0.24)
+
+	setSplashProgress(100, "Готово! Открываем ASTRAL HUB...")
+	task.wait(0.28)
+
+	State.HubReady = true
+	triggerBtn.Visible = true
+	splashActive = false
+
+	if splashBg and splashBg.Parent then
+		TweenService:Create(splashScale, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+			Scale = 1.05
+		}):Play()
+		local fadeBg = TweenService:Create(splashBg, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 1
+		})
+		local fadeCard = TweenService:Create(splashCard, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+			BackgroundTransparency = 1
+		})
+		for _, child in ipairs(splashCard:GetDescendants()) do
+			if child:IsA("TextLabel") then
+				TweenService:Create(child, TweenInfo.new(0.2), { TextTransparency = 1 }):Play()
+			elseif child:IsA("Frame") then
+				TweenService:Create(child, TweenInfo.new(0.2), { BackgroundTransparency = 1 }):Play()
+			end
+		end
+		glowOrb1.Visible = false
+		glowOrb2.Visible = false
+		fadeBg:Play()
+		fadeCard:Play()
+		fadeBg.Completed:Once(function()
+			if splashBg and splashBg.Parent then
+				splashBg:Destroy()
+			end
+		end)
+	end
+
+	setHub(true, false)
+	pushNotify("ASTRAL HUB загружен", "Скрыть/открыть меню: RightShift или Insert")
 end)
