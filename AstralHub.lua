@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.5 | GitHub Module | Fixed ESP & Aimbot + Live Team/Enemy Check + Rage Wallbang
+-- ASTRAL HUB v2.3 | GitHub Module | Auto Splash + Smooth Open + Rage Wallbang | Aimbot + Silent Aim + Rage + ESP + 3D Skin Viewer + Settings
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -233,46 +233,6 @@ local function applyGravity(enabled, val)
 	Workspace.Gravity = enabled and val or origGravity
 end
 
-local function isTeammate(plr, enabled)
-	if not enabled or not plr or plr == LocalPlayer then
-		return false
-	end
-	if LocalPlayer.Team ~= nil and plr.Team ~= nil then
-		return plr.Team == LocalPlayer.Team
-	end
-	if LocalPlayer.TeamColor ~= nil and plr.TeamColor ~= nil then
-		if not LocalPlayer.TeamColor.Neutral and not plr.TeamColor.Neutral then
-			return plr.TeamColor == LocalPlayer.TeamColor
-		end
-	end
-	return false
-end
-
-local function getRootPart(char)
-	if not char then
-		return nil
-	end
-	return char:FindFirstChild("HumanoidRootPart")
-		or char:FindFirstChild("UpperTorso")
-		or char:FindFirstChild("Torso")
-		or char:FindFirstChildWhichIsA("BasePart")
-end
-
-local function getAliveParts(char)
-	if not char or not char.Parent then
-		return false, nil, nil
-	end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	local hrp = getRootPart(char)
-	if not hum or not hrp then
-		return false, nil, nil
-	end
-	if hum.Health <= 0 then
-		return false, hum, hrp
-	end
-	return true, hum, hrp
-end
-
 local function addCorner(obj, radius)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = UDim.new(0, radius)
@@ -395,7 +355,7 @@ local splashTag = Instance.new("TextLabel")
 splashTag.Size = UDim2.new(1, -32, 0, 20)
 splashTag.Position = UDim2.new(0, 16, 0, 18)
 splashTag.BackgroundTransparency = 1
-splashTag.Text = "✦ ASTRAL HUB  •  v2.5"
+splashTag.Text = "✦ ASTRAL HUB  •  v2.3"
 splashTag.TextColor3 = Theme.AccentBright
 splashTag.Font = Enum.Font.GothamBold
 splashTag.TextSize = 11
@@ -1131,9 +1091,9 @@ addToggle(aimPage, "Show Aimbot FOV", "Показывает фиолетовый
 addSlider(aimPage, "Aimbot FOV Radius", 35, 360, State.FOVRadius, 5, 8, function(v) State.FOVRadius = v end, "FOVRadius")
 addSlider(aimPage, "Smoothness", 0.04, 1.0, State.Smoothness, 0.02, 9, function(v) State.Smoothness = v end, "Smoothness")
 addSlider(aimPage, "Prediction", 0, 0.35, State.Prediction, 0.01, 10, function(v) State.Prediction = v end, "Prediction")
-addToggle(aimPage, "Team Check", "Игнорировать тиммейтов и наводить на противников", State.TeamCheck, 11, function(v) State.TeamCheck = v end, "TeamCheck")
-addToggle(aimPage, "Wall Check", "Обновляет видимость цели в реальном времени", State.WallCheck, 12, function(v) State.WallCheck = v end, "WallCheck")
-addToggle(aimPage, "Sticky Target Lock", "Удерживать цель пока она жива и видима", State.StickyTarget, 13, function(v) State.StickyTarget = v end, "StickyTarget")
+addToggle(aimPage, "Team Check", "Не наводить на свою команду", State.TeamCheck, 11, function(v) State.TeamCheck = v end, "TeamCheck")
+addToggle(aimPage, "Wall Check", "Проверка видимости сквозь стены", State.WallCheck, 12, function(v) State.WallCheck = v end, "WallCheck")
+addToggle(aimPage, "Sticky Target Lock", "Удерживать цель пока она жива", State.StickyTarget, 13, function(v) State.StickyTarget = v end, "StickyTarget")
 addSlider(aimPage, "Triggerbot Delay", 0.02, 0.3, State.TriggerDelay, 0.01, 14, function(v) State.TriggerDelay = v end, "TriggerDelay")
 
 -- Silent Aim
@@ -1862,7 +1822,7 @@ local espLayer = Instance.new("Frame")
 espLayer.Name = "AstralESPOverlay"
 espLayer.Size = UDim2.new(1, 0, 1, 0)
 espLayer.BackgroundTransparency = 1
-espLayer.ZIndex = 2
+espLayer.ZIndex = 1
 espLayer.Parent = gui
 
 local espPool = {}
@@ -1872,7 +1832,6 @@ local function makeLine()
 	f.BackgroundColor3 = Theme.AccentBright
 	f.BorderSizePixel = 0
 	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.ZIndex = 2
 	f.Visible = false
 	f.Parent = espLayer
 	return f
@@ -1882,7 +1841,6 @@ local function createESPSet()
 	local box = Instance.new("Frame")
 	box.BackgroundColor3 = Theme.Accent
 	box.BackgroundTransparency = 0.88
-	box.ZIndex = 2
 	box.Visible = false
 	box.Parent = espLayer
 	addStroke(box, Theme.AccentBright, 1.4, 0.1)
@@ -1901,7 +1859,6 @@ local function createESPSet()
 	tag.Font = Enum.Font.GothamBold
 	tag.TextSize = 10
 	tag.TextStrokeTransparency = 0.5
-	tag.ZIndex = 3
 	tag.Visible = false
 	tag.Parent = espLayer
 	addCorner(tag, 5)
@@ -2003,6 +1960,21 @@ local function drawCornerBox(s, topLeft, size, col)
 	drawLine(s.C_BR_V, br - Vector2.new(0, ch), br, t, col)
 end
 
+local function getAliveParts(char)
+	if not char or not char.Parent then
+		return false, nil, nil
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hum or not hrp then
+		return false, nil, nil
+	end
+	if hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead then
+		return false, hum, hrp
+	end
+	return true, hum, hrp
+end
+
 -- FOV Circles & Wallbang + Silent Aim Hooks
 local fovCircle = Instance.new("Frame")
 fovCircle.Name = "AimbotFOVCircle"
@@ -2074,6 +2046,7 @@ local function measureWallThickness(fromPos, toPos, targetChar)
 		local stepDist = (hitPos - curOrigin).Magnitude
 		remaining -= stepDist
 
+		-- Оценка толщины преграды вдоль луча
 		local maxExitProbe = math.min(remaining, State.WallbangMaxThickness + 2)
 		local exitDist = math.min(maxExitProbe, 1.0)
 		local foundExit = false
@@ -2109,9 +2082,6 @@ local function measureWallThickness(fromPos, toPos, targetChar)
 end
 
 local function canSeePart(fromPos, targetPart, targetChar, checkWall)
-	if not targetPart then
-		return false
-	end
 	if State.WallbangEnabled then
 		local penetrable = measureWallThickness(fromPos, targetPart.Position, targetChar)
 		return penetrable
@@ -2121,18 +2091,14 @@ local function canSeePart(fromPos, targetPart, targetChar, checkWall)
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	local excludeList = {}
+	local excludeList = { targetChar }
 	if LocalPlayer.Character then
 		table.insert(excludeList, LocalPlayer.Character)
-	end
-	if targetChar then
-		table.insert(excludeList, targetChar)
 	end
 	params.FilterDescendantsInstances = excludeList
 	params.IgnoreWater = true
 
-	local dir = targetPart.Position - fromPos
-	local res = Workspace:Raycast(fromPos, dir, params)
+	local res = Workspace:Raycast(fromPos, targetPart.Position - fromPos, params)
 	return res == nil
 end
 
@@ -2154,7 +2120,7 @@ local function getSilentBodyPoint(char, partMode)
 			return head, head.Position - Vector3.new(0, 0.35, 0)
 		end
 	elseif partMode == "Torso" then
-		local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or getRootPart(char)
+		local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
 		if torso then
 			return torso, torso.Position
 		end
@@ -2175,7 +2141,7 @@ local function getSilentBodyPoint(char, partMode)
 			return leg, leg.Position
 		end
 	end
-	local fallback = char:FindFirstChild("Head") or getRootPart(char)
+	local fallback = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
 	return fallback, fallback and fallback.Position or nil
 end
 
@@ -2194,19 +2160,22 @@ local function updateSilentTarget(mousePos)
 	local useWallCheck = State.SilentWallCheck and not State.WallbangEnabled
 
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and not isTeammate(plr, State.SilentTeamCheck) then
-			local alive = getAliveParts(plr.Character)
-			if alive and plr.Character then
-				local part, pointPos = getSilentBodyPoint(plr.Character, State.SilentPart)
-				if part and pointPos then
-					local sp, onScreen = Camera:WorldToViewportPoint(pointPos)
-					if onScreen and sp.Z > 0 then
-						local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
-						if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, useWallCheck) then
-							bestDist = d
-							bestPart = part
-							bestPos = pointPos + (part.AssemblyLinearVelocity * State.SilentPrediction)
-							bestName = plr.Name
+		if plr ~= LocalPlayer then
+			local sameTeam = State.SilentTeamCheck and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
+			if not sameTeam then
+				local alive = getAliveParts(plr.Character)
+				if alive and plr.Character then
+					local part, pointPos = getSilentBodyPoint(plr.Character, State.SilentPart)
+					if part and pointPos then
+						local sp, onScreen = Camera:WorldToViewportPoint(pointPos)
+						if onScreen and sp.Z > 0 then
+							local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+							if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, useWallCheck) then
+								bestDist = d
+								bestPart = part
+								bestPos = pointPos + (part.AssemblyLinearVelocity * State.SilentPrediction)
+								bestName = plr.Name
+							end
 						end
 					end
 				end
@@ -2246,16 +2215,18 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 						end
 						local targetModel = silentTargetPart:FindFirstAncestorOfClass("Model")
 						if targetModel then
-							for _ = 1, 8 do
-								local hitWall = Workspace:Raycast(origin, (silentTargetPos - origin).Unit * (silentTargetPos - origin).Magnitude, p)
-								if hitWall and hitWall.Instance and not hitWall.Instance:IsDescendantOf(targetModel) then
-									table.insert(excl, hitWall.Instance)
-									p.FilterDescendantsInstances = excl
-								else
-									break
+							for _, obj in ipairs(Workspace:GetDescendants()) do
+								if obj:IsA("BasePart") and not obj:IsDescendantOf(targetModel) then
+									local hitWall = Workspace:Raycast(origin, (silentTargetPos - origin).Unit * (silentTargetPos - origin).Magnitude, p)
+									if hitWall and hitWall.Instance then
+										table.insert(excl, hitWall.Instance)
+									else
+										break
+									end
 								end
 							end
 						end
+						p.FilterDescendantsInstances = excl
 					end
 					return oldNamecall(self, unpack(args))
 				end
@@ -2287,9 +2258,9 @@ end
 
 local function selectTargetPart(char, mousePos)
 	if State.TargetPartMode == "Head" then
-		return char:FindFirstChild("Head") or getRootPart(char)
+		return char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
 	elseif State.TargetPartMode == "HumanoidRootPart" then
-		return getRootPart(char)
+		return char:FindFirstChild("HumanoidRootPart")
 	else
 		local bestPart = nil
 		local bestDist = math.huge
@@ -2305,44 +2276,28 @@ local function selectTargetPart(char, mousePos)
 				end
 			end
 		end
-		return bestPart or getRootPart(char)
+		return bestPart or char:FindFirstChild("HumanoidRootPart")
 	end
-end
-
-local function isPartValidForAim(part, char, plr, mousePos, maxFov, checkWall)
-	if not part or not part.Parent or not char then
-		return false, math.huge
-	end
-	if isTeammate(plr, State.TeamCheck) then
-		return false, math.huge
-	end
-	local alive = getAliveParts(char)
-	if not alive then
-		return false, math.huge
-	end
-	local sp, onScreen = Camera:WorldToViewportPoint(part.Position)
-	if not onScreen or sp.Z <= 0 then
-		return false, math.huge
-	end
-	local fovDist = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
-	if fovDist > maxFov then
-		return false, math.huge
-	end
-	if not canSeePart(Camera.CFrame.Position, part, char, checkWall) then
-		return false, math.huge
-	end
-	return true, fovDist
 end
 
 local function findAimTarget(mousePos)
 	local checkWall = State.WallCheck and not State.WallbangEnabled
 
 	if State.StickyTarget and lockedPart and lockedPart.Parent then
-		local lockedChar = lockedPart:FindFirstAncestorOfClass("Model")
-		local lockedPlr = lockedChar and Players:GetPlayerFromCharacter(lockedChar) or nil
-		local lockedOk = isPartValidForAim(lockedPart, lockedChar, lockedPlr, mousePos, State.FOVRadius * 1.25, checkWall)
-		if lockedOk then
-			return lockedPart
+		local char = lockedPart:FindFirstAncestorOfClass("Model")
+		local alive = getAliveParts(char)
+		if alive and char then
+			local plr = Players:GetPlayerFromCharacter(char)
+			local sameTeam = State.TeamCheck and plr and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
+			if not sameTeam then
+				local sp, onScreen = Camera:WorldToViewportPoint(lockedPart.Position)
+				if onScreen and sp.Z > 0 then
+					local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+					if d <= State.FOVRadius * 1.15 and canSeePart(Camera.CFrame.Position, lockedPart, char, checkWall) then
+						return lockedPart
+					end
+				end
+			end
 		end
 		lockedPart = nil
 	end
@@ -2351,12 +2306,23 @@ local function findAimTarget(mousePos)
 	local bestDist = State.FOVRadius
 
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and not isTeammate(plr, State.TeamCheck) and plr.Character then
-			local part = selectTargetPart(plr.Character, mousePos)
-			local ok, fovDist = isPartValidForAim(part, plr.Character, plr, mousePos, State.FOVRadius, checkWall)
-			if ok and fovDist <= bestDist then
-				bestDist = fovDist
-				best = part
+		if plr ~= LocalPlayer then
+			local sameTeam = State.TeamCheck and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
+			if not sameTeam then
+				local alive = getAliveParts(plr.Character)
+				if alive and plr.Character then
+					local part = selectTargetPart(plr.Character, mousePos)
+					if part then
+						local sp, onScreen = Camera:WorldToViewportPoint(part.Position)
+						if onScreen and sp.Z > 0 then
+							local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+							if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, checkWall) then
+								bestDist = d
+								best = part
+							end
+						end
+					end
+				end
 			end
 		end
 	end
@@ -2449,15 +2415,18 @@ RunService.RenderStepped:Connect(function(dt)
 	local enemyCount = 0
 
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and not isTeammate(plr, State.TeamCheck) then
-			local alive, _, hrp = getAliveParts(plr.Character)
-			if alive and hrp then
-				enemyCount += 1
-				local refPos = myHRP and myHRP.Position or Camera.CFrame.Position
-				local d = (hrp.Position - refPos).Magnitude
-				if d < nearestDist then
-					nearestDist = d
-					nearestEnemyHRP = hrp
+		if plr ~= LocalPlayer then
+			local sameTeam = State.TeamCheck and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
+			if not sameTeam then
+				local alive, _, hrp = getAliveParts(plr.Character)
+				if alive and hrp then
+					enemyCount += 1
+					local refPos = myHRP and myHRP.Position or Camera.CFrame.Position
+					local d = (hrp.Position - refPos).Magnitude
+					if d < nearestDist then
+						nearestDist = d
+						nearestEnemyHRP = hrp
+					end
 				end
 			end
 		end
@@ -2587,15 +2556,18 @@ RunService.RenderStepped:Connect(function(dt)
 		if State.KillAuraEnabled and myAlive and myHRP and myChar then
 			if (os.clock() - lastAuraHit) >= 0.08 then
 				for _, plr in ipairs(Players:GetPlayers()) do
-					if plr ~= LocalPlayer and not isTeammate(plr, State.TeamCheck) then
-						local alive, _, hrp = getAliveParts(plr.Character)
-						if alive and hrp and (hrp.Position - myHRP.Position).Magnitude <= State.KillAuraRange then
-							lastAuraHit = os.clock()
-							local tool = myChar:FindFirstChildOfClass("Tool")
-							if tool then
-								tool:Activate()
+					if plr ~= LocalPlayer then
+						local sameTeam = State.TeamCheck and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
+						if not sameTeam then
+							local alive, _, hrp = getAliveParts(plr.Character)
+							if alive and hrp and (hrp.Position - myHRP.Position).Magnitude <= State.KillAuraRange then
+								lastAuraHit = os.clock()
+								local tool = myChar:FindFirstChildOfClass("Tool")
+								if tool then
+									tool:Activate()
+								end
+								break
 							end
-							break
 						end
 					end
 				end
@@ -2677,15 +2649,15 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 			local s = espPool[plr]
 
-			local sameTeamAim = isTeammate(plr, State.TeamCheck)
-			local sameTeamESP = isTeammate(plr, State.ESPTeamCheck)
+			local sameTeamAim = State.TeamCheck and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
+			local sameTeamESP = State.ESPTeamCheck and (LocalPlayer.Team ~= nil) and (plr.Team == LocalPlayer.Team)
 			local alive, hum, hrp = getAliveParts(plr.Character)
 
 			if plr.Character then
 				local targetHB = (State.HitboxPart == "Head")
 					and plr.Character:FindFirstChild("Head")
 					or hrp
-				if targetHB and targetHB:IsA("BasePart") then
+				if targetHB then
 					if State.HubReady and State.HitboxEnabled and alive and not sameTeamAim then
 						targetHB.Size = Vector3.new(State.HitboxSize, State.HitboxSize, State.HitboxSize)
 						targetHB.Transparency = State.HitboxTransparency
@@ -2694,7 +2666,7 @@ RunService.RenderStepped:Connect(function(dt)
 						if targetHB.Name == "Head" then
 							targetHB.Size = Vector3.new(2, 1, 1)
 							targetHB.Transparency = 0
-						elseif targetHB.Name == "HumanoidRootPart" then
+						else
 							targetHB.Size = Vector3.new(2, 2, 1)
 							targetHB.Transparency = 1
 						end
@@ -2819,7 +2791,7 @@ task.spawn(function()
 	loadConfig(State.ConfigProfile, true)
 	task.wait(0.26)
 
-	setSplashProgress(58, "Восстановление ESP и Aimbot...")
+	setSplashProgress(58, "Инициализация Wallbang, Silent Aim и ESP...")
 	applyCompactMode(State.CompactMode)
 	sideBar.Visible = true
 	bodyArea.Visible = true
@@ -2867,5 +2839,5 @@ task.spawn(function()
 	end
 
 	setHub(true, false)
-	pushNotify("ASTRAL HUB загружен", "ESP и Aimbot восстановлены. Меню: RightShift")
+	pushNotify("ASTRAL HUB загружен", "Wallbang готов. Меню: RightShift или Insert")
 end)
