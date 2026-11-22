@@ -228,6 +228,7 @@ local function applyGravity(enabled, val)
 	Workspace.Gravity = enabled and val or origGravity
 end
 
+-- FIXED: safe TeamColor comparison to avoid 'Neutral' BrickColor error
 local function isTeammate(plr, enabled)
 	if not enabled or not plr or plr == LocalPlayer then
 		return false
@@ -235,8 +236,10 @@ local function isTeammate(plr, enabled)
 	if LocalPlayer.Team and plr.Team then
 		return plr.Team == LocalPlayer.Team
 	end
-	if LocalPlayer.TeamColor and plr.TeamColor then
-		return plr.TeamColor == LocalPlayer.TeamColor
+	local ok1, ltc = pcall(function() return LocalPlayer.TeamColor end)
+	local ok2, ptc = pcall(function() return plr.TeamColor end)
+	if ok1 and ok2 and ltc and ptc then
+		return tostring(ltc) == tostring(ptc)
 	end
 	return false
 end
