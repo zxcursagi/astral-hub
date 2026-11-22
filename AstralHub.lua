@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.3 | GitHub Module | Auto Splash + Smooth Open + Rage Wallbang | Aimbot + Silent Aim + Rage + ESP + 3D Skin Viewer + Settings
+-- ASTRAL HUB v2.2 | GitHub Module | Auto Splash + Smooth Open | Aimbot + Silent Aim + Rage + ESP + 3D Skin Viewer + Settings
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -111,11 +111,6 @@ local DEFAULT_STATE = {
 	SilentPrediction = 0.12,
 	SilentWallCheck = true,
 	SilentTeamCheck = true,
-
-	-- Rage & Wallbang
-	WallbangEnabled = false,
-	WallbangMaxThickness = 6.5,
-	WallbangAutoFire = false,
 
 	SpinbotEnabled = false,
 	SpinSpeed = 35,
@@ -294,7 +289,7 @@ gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = PlayerGui
 
--- Загрузочный фон (Splash Screen)
+-- Красивый загрузочный фон (Splash Screen)
 local splashBg = Instance.new("Frame")
 splashBg.Name = "AstralSplashScreen"
 splashBg.Size = UDim2.new(1, 0, 1, 0)
@@ -355,7 +350,7 @@ local splashTag = Instance.new("TextLabel")
 splashTag.Size = UDim2.new(1, -32, 0, 20)
 splashTag.Position = UDim2.new(0, 16, 0, 18)
 splashTag.BackgroundTransparency = 1
-splashTag.Text = "✦ ASTRAL HUB  •  v2.3"
+splashTag.Text = "✦ ASTRAL HUB  •  v2.2"
 splashTag.TextColor3 = Theme.AccentBright
 splashTag.Font = Enum.Font.GothamBold
 splashTag.TextSize = 11
@@ -373,13 +368,14 @@ splashMainTitle.Font = Enum.Font.GothamBold
 splashMainTitle.TextSize = 21
 splashMainTitle.TextXAlignment = Enum.TextXAlignment.Left
 splashMainTitle.ZIndex = 53
+splashTag.ZIndex = 53
 splashMainTitle.Parent = splashCard
 
 local splashStatus = Instance.new("TextLabel")
 splashStatus.Size = UDim2.new(1, -32, 0, 20)
 splashStatus.Position = UDim2.new(0, 16, 0, 76)
 splashStatus.BackgroundTransparency = 1
-splashStatus.Text = "Подготовка модулей Aimbot, Silent Aim, Wallbang и ESP..."
+splashStatus.Text = "Подготовка модулей Aimbot, Silent Aim, Rage и ESP..."
 splashStatus.TextColor3 = Theme.TextMuted
 splashStatus.Font = Enum.Font.GothamMedium
 splashStatus.TextSize = 11
@@ -505,8 +501,8 @@ end
 -- Watermark HUD
 local watermarkCard = Instance.new("Frame")
 watermarkCard.Name = "AstralWatermarkHUD"
-watermarkCard.Size = UDim2.new(0, 315, 0, 28)
-watermarkCard.Position = UDim2.new(0.5, -157, 0, 12)
+watermarkCard.Size = UDim2.new(0, 290, 0, 28)
+watermarkCard.Position = UDim2.new(0.5, -145, 0, 12)
 watermarkCard.BackgroundColor3 = Theme.BgCard
 watermarkCard.BackgroundTransparency = 0.25
 watermarkCard.Visible = false
@@ -1119,58 +1115,47 @@ end, "SilentPrediction")
 addToggle(silentPage, "Silent Team Check", "Игнорировать игроков своей команды", State.SilentTeamCheck, 8, function(v)
 	State.SilentTeamCheck = v
 end, "SilentTeamCheck")
-addToggle(silentPage, "Silent Wall Check", "Игнорировать стены если выключен (или включён Wallbang)", State.SilentWallCheck, 9, function(v)
+addToggle(silentPage, "Silent Wall Check", "Магнитить пули только если враг не за стеной", State.SilentWallCheck, 9, function(v)
 	State.SilentWallCheck = v
 end, "SilentWallCheck")
 
--- Rage & Wallbang
-addSection(ragePage, "Rage Wallbang (прострел через стены)", 1)
-addToggle(ragePage, "Rage Wallbang", "Позволяет захватывать и простреливать цели за стенами", State.WallbangEnabled, 2, function(v)
-	State.WallbangEnabled = v
-end, "WallbangEnabled")
-addSlider(ragePage, "Wallbang Max Thickness", 1, 35, State.WallbangMaxThickness, 0.5, 3, function(v)
-	State.WallbangMaxThickness = v
-end, "WallbangMaxThickness")
-addToggle(ragePage, "Wallbang Auto-Fire", "Авто-выстрел по пробиваемой цели в FOV", State.WallbangAutoFire, 4, function(v)
-	State.WallbangAutoFire = v
-end, "WallbangAutoFire")
+-- Rage
+addSection(ragePage, "Боевые Rage-функции", 1)
+addToggle(ragePage, "Hitbox Expander", "Увеличивает хитбоксы живых противников", State.HitboxEnabled, 2, function(v) State.HitboxEnabled = v end, "HitboxEnabled")
+addCycle(ragePage, "Hitbox Part", HITBOX_PARTS, State.HitboxPart, 3, function(v) State.HitboxPart = v end, "HitboxPart")
+addSlider(ragePage, "Hitbox Size", 2, 22, State.HitboxSize, 1, 4, function(v) State.HitboxSize = v end, "HitboxSize")
+addSlider(ragePage, "Hitbox Transparency", 0.1, 1.0, State.HitboxTransparency, 0.05, 5, function(v) State.HitboxTransparency = v end, "HitboxTransparency")
+addToggle(ragePage, "Rapid Fire", "Быстрая стрельба при удержании ЛКМ", State.RapidFireEnabled, 6, function(v) State.RapidFireEnabled = v end, "RapidFireEnabled")
+addSlider(ragePage, "Rapid Fire Delay", 0.01, 0.25, State.RapidFireDelay, 0.01, 7, function(v) State.RapidFireDelay = v end, "RapidFireDelay")
+addToggle(ragePage, "Auto Fire on Visible", "Авто-выстрел при появлении цели в FOV", State.AutoFireVisible, 8, function(v) State.AutoFireVisible = v end, "AutoFireVisible")
+addToggle(ragePage, "Kill Aura (Close Range)", "Авто-удар оружием по врагам вблизи", State.KillAuraEnabled, 9, function(v) State.KillAuraEnabled = v end, "KillAuraEnabled")
+addSlider(ragePage, "Kill Aura Range", 6, 35, State.KillAuraRange, 1, 10, function(v) State.KillAuraRange = v end, "KillAuraRange")
+addToggle(ragePage, "Target Orbit", "Кружит вокруг ближайшего живого врага", State.OrbitTargetEnabled, 11, function(v) State.OrbitTargetEnabled = v end, "OrbitTargetEnabled")
+addSlider(ragePage, "Orbit Radius", 4, 24, State.OrbitRadius, 1, 12, function(v) State.OrbitRadius = v end, "OrbitRadius")
+addSlider(ragePage, "Orbit Speed", 1, 18, State.OrbitSpeed, 1, 13, function(v) State.OrbitSpeed = v end, "OrbitSpeed")
 
-addSection(ragePage, "Боевые Rage-функции", 5)
-addToggle(ragePage, "Hitbox Expander", "Увеличивает хитбоксы живых противников", State.HitboxEnabled, 6, function(v) State.HitboxEnabled = v end, "HitboxEnabled")
-addCycle(ragePage, "Hitbox Part", HITBOX_PARTS, State.HitboxPart, 7, function(v) State.HitboxPart = v end, "HitboxPart")
-addSlider(ragePage, "Hitbox Size", 2, 22, State.HitboxSize, 1, 8, function(v) State.HitboxSize = v end, "HitboxSize")
-addSlider(ragePage, "Hitbox Transparency", 0.1, 1.0, State.HitboxTransparency, 0.05, 9, function(v) State.HitboxTransparency = v end, "HitboxTransparency")
-addToggle(ragePage, "Rapid Fire", "Быстрая стрельба при удержании ЛКМ", State.RapidFireEnabled, 10, function(v) State.RapidFireEnabled = v end, "RapidFireEnabled")
-addSlider(ragePage, "Rapid Fire Delay", 0.01, 0.25, State.RapidFireDelay, 0.01, 11, function(v) State.RapidFireDelay = v end, "RapidFireDelay")
-addToggle(ragePage, "Auto Fire on Visible", "Авто-выстрел при появлении цели в FOV", State.AutoFireVisible, 12, function(v) State.AutoFireVisible = v end, "AutoFireVisible")
-addToggle(ragePage, "Kill Aura (Close Range)", "Авто-удар оружием по врагам вблизи", State.KillAuraEnabled, 13, function(v) State.KillAuraEnabled = v end, "KillAuraEnabled")
-addSlider(ragePage, "Kill Aura Range", 6, 35, State.KillAuraRange, 1, 14, function(v) State.KillAuraRange = v end, "KillAuraRange")
-addToggle(ragePage, "Target Orbit", "Кружит вокруг ближайшего живого врага", State.OrbitTargetEnabled, 15, function(v) State.OrbitTargetEnabled = v end, "OrbitTargetEnabled")
-addSlider(ragePage, "Orbit Radius", 4, 24, State.OrbitRadius, 1, 16, function(v) State.OrbitRadius = v end, "OrbitRadius")
-addSlider(ragePage, "Orbit Speed", 1, 18, State.OrbitSpeed, 1, 17, function(v) State.OrbitSpeed = v end, "OrbitSpeed")
-
-addSection(ragePage, "Anti-Aim и движение", 18)
-addToggle(ragePage, "Spinbot (Anti-Aim)", "Быстрое вращение персонажа вокруг своей оси", State.SpinbotEnabled, 19, function(v) State.SpinbotEnabled = v end, "SpinbotEnabled")
-addSlider(ragePage, "Spin Speed", 5, 100, State.SpinSpeed, 5, 20, function(v) State.SpinSpeed = v end, "SpinSpeed")
-addToggle(ragePage, "Spectate Nearest Enemy", "Наводит камеру на ближайшего врага", State.SpectateNearest, 21, function(v) State.SpectateNearest = v end, "SpectateNearest")
-addToggle(ragePage, "BunnyHop (Auto Jump)", "Автоматический прыжок на земле", State.BHopEnabled, 22, function(v) State.BHopEnabled = v end, "BHopEnabled")
-addSlider(ragePage, "BHop Speed Boost", 1.0, 2.0, State.BHopBoost, 0.05, 23, function(v) State.BHopBoost = v end, "BHopBoost")
-addToggle(ragePage, "CFrame Speed Hack", "Ускоренный рывок по направлению движения", State.CFrameSpeedEnabled, 24, function(v) State.CFrameSpeedEnabled = v end, "CFrameSpeedEnabled")
-addSlider(ragePage, "CFrame Speed Mult", 1.0, 3.0, State.CFrameSpeedMult, 0.1, 25, function(v) State.CFrameSpeedMult = v end, "CFrameSpeedMult")
-addToggle(ragePage, "Custom Gravity", "Меняет гравитацию в мире", State.GravityOverride, 26, function(v)
+addSection(ragePage, "Anti-Aim и движение", 14)
+addToggle(ragePage, "Spinbot (Anti-Aim)", "Быстрое вращение персонажа вокруг своей оси", State.SpinbotEnabled, 15, function(v) State.SpinbotEnabled = v end, "SpinbotEnabled")
+addSlider(ragePage, "Spin Speed", 5, 100, State.SpinSpeed, 5, 16, function(v) State.SpinSpeed = v end, "SpinSpeed")
+addToggle(ragePage, "Spectate Nearest Enemy", "Наводит камеру на ближайшего врага", State.SpectateNearest, 17, function(v) State.SpectateNearest = v end, "SpectateNearest")
+addToggle(ragePage, "BunnyHop (Auto Jump)", "Автоматический прыжок на земле", State.BHopEnabled, 18, function(v) State.BHopEnabled = v end, "BHopEnabled")
+addSlider(ragePage, "BHop Speed Boost", 1.0, 2.0, State.BHopBoost, 0.05, 19, function(v) State.BHopBoost = v end, "BHopBoost")
+addToggle(ragePage, "CFrame Speed Hack", "Ускоренный рывок по направлению движения", State.CFrameSpeedEnabled, 20, function(v) State.CFrameSpeedEnabled = v end, "CFrameSpeedEnabled")
+addSlider(ragePage, "CFrame Speed Mult", 1.0, 3.0, State.CFrameSpeedMult, 0.1, 21, function(v) State.CFrameSpeedMult = v end, "CFrameSpeedMult")
+addToggle(ragePage, "Custom Gravity", "Меняет гравитацию в мире", State.GravityOverride, 22, function(v)
 	State.GravityOverride = v
 	applyGravity(v, State.GravityValue)
 end, "GravityOverride")
-addSlider(ragePage, "Gravity Value", 20, 250, State.GravityValue, 5, 27, function(v)
+addSlider(ragePage, "Gravity Value", 20, 250, State.GravityValue, 5, 23, function(v)
 	State.GravityValue = v
 	if State.GravityOverride then
 		applyGravity(true, v)
 	end
 end, "GravityValue")
-addToggle(ragePage, "Anti-Ragdoll / Recover", "Защита от падения в Ragdoll", State.AntiRagdollEnabled, 28, function(v) State.AntiRagdollEnabled = v end, "AntiRagdollEnabled")
-addToggle(ragePage, "NoClip", "Прохождение сквозь стены и препятствия", State.NoClipEnabled, 29, function(v) State.NoClipEnabled = v end, "NoClipEnabled")
-addToggle(ragePage, "Fly Mode", "Полёт на WASD + Space / LeftShift", State.FlyEnabled, 30, function(v) State.FlyEnabled = v end, "FlyEnabled")
-addSlider(ragePage, "Fly Speed", 20, 150, State.FlySpeed, 5, 31, function(v) State.FlySpeed = v end, "FlySpeed")
+addToggle(ragePage, "Anti-Ragdoll / Recover", "Защита от падения в Ragdoll", State.AntiRagdollEnabled, 24, function(v) State.AntiRagdollEnabled = v end, "AntiRagdollEnabled")
+addToggle(ragePage, "NoClip", "Прохождение сквозь стены и препятствия", State.NoClipEnabled, 25, function(v) State.NoClipEnabled = v end, "NoClipEnabled")
+addToggle(ragePage, "Fly Mode", "Полёт на WASD + Space / LeftShift", State.FlyEnabled, 26, function(v) State.FlyEnabled = v end, "FlyEnabled")
+addSlider(ragePage, "Fly Speed", 20, 150, State.FlySpeed, 5, 27, function(v) State.FlySpeed = v end, "FlySpeed")
 
 -- ESP
 addSection(espPage, "Все виды ESP", 1)
@@ -1368,7 +1353,6 @@ local syncingUI = false
 
 local fovStroke = nil
 local silentFovStroke = nil
-local silentTargetPart = nil
 
 local function applyColorTheme(themeName)
 	local pal = COLOR_THEMES[themeName] or COLOR_THEMES["Astral Violet"]
@@ -1975,7 +1959,7 @@ local function getAliveParts(char)
 	return true, hum, hrp
 end
 
--- FOV Circles & Wallbang + Silent Aim Hooks
+-- FOV Circles & Silent Aim Hooks
 local fovCircle = Instance.new("Frame")
 fovCircle.Name = "AimbotFOVCircle"
 fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1995,9 +1979,9 @@ addCorner(silentFovCircle, 999)
 silentFovStroke = addStroke(silentFovCircle, Theme.SilentAccent, 1.6, 0.2)
 
 local lockedPart = nil
+local silentTargetPart = nil
 local silentTargetPos = nil
 local silentTargetPlayerName = "None"
-local wallbangHasTarget = false
 
 local lastShot = 0
 local lastRapidShot = 0
@@ -2010,82 +1994,7 @@ local fpsAccum = 0
 local fpsFrames = 0
 local currentFPS = 60
 
-local function measureWallThickness(fromPos, toPos, targetChar)
-	local dirVec = toPos - fromPos
-	local totalDist = dirVec.Magnitude
-	if totalDist < 0.05 then
-		return true, 0
-	end
-	local unitDir = dirVec.Unit
-
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	local excludeList = {}
-	if LocalPlayer.Character then
-		table.insert(excludeList, LocalPlayer.Character)
-	end
-	params.FilterDescendantsInstances = excludeList
-	params.IgnoreWater = true
-
-	local thickness = 0
-	local curOrigin = fromPos
-	local remaining = totalDist
-	local guard = 0
-
-	while remaining > 0.05 and guard < 12 do
-		guard += 1
-		local res = Workspace:Raycast(curOrigin, unitDir * remaining, params)
-		if not res or not res.Instance then
-			break
-		end
-		if targetChar and res.Instance:IsDescendantOf(targetChar) then
-			break
-		end
-
-		local hitPos = res.Position
-		local stepDist = (hitPos - curOrigin).Magnitude
-		remaining -= stepDist
-
-		-- Оценка толщины преграды вдоль луча
-		local maxExitProbe = math.min(remaining, State.WallbangMaxThickness + 2)
-		local exitDist = math.min(maxExitProbe, 1.0)
-		local foundExit = false
-
-		local probeStep = 0.5
-		local probeCur = hitPos + (unitDir * probeStep)
-		local probeLimit = math.min(remaining, State.WallbangMaxThickness + 1)
-
-		while (probeCur - hitPos).Magnitude <= probeLimit do
-			local checkParams = RaycastParams.new()
-			checkParams.FilterType = Enum.RaycastFilterType.Whitelist
-			checkParams.FilterDescendantsInstances = { res.Instance }
-			local insideHit = Workspace:Raycast(probeCur - (unitDir * probeStep), unitDir * probeStep, checkParams)
-			if not insideHit then
-				exitDist = (probeCur - hitPos).Magnitude
-				foundExit = true
-				break
-			end
-			probeCur += unitDir * probeStep
-		end
-
-		if not foundExit then
-			exitDist = math.min(remaining, math.max(1.5, math.min(res.Instance.Size.Magnitude * 0.35, remaining)))
-		end
-
-		thickness += exitDist
-		local advance = math.max(exitDist + 0.1, 0.25)
-		curOrigin = hitPos + (unitDir * advance)
-		remaining = (toPos - curOrigin).Magnitude
-	end
-
-	return thickness <= State.WallbangMaxThickness, thickness
-end
-
 local function canSeePart(fromPos, targetPart, targetChar, checkWall)
-	if State.WallbangEnabled then
-		local penetrable = measureWallThickness(fromPos, targetPart.Position, targetChar)
-		return penetrable
-	end
 	if not checkWall then
 		return true
 	end
@@ -2157,7 +2066,6 @@ local function updateSilentTarget(mousePos)
 	local bestPos = nil
 	local bestName = "None"
 	local bestDist = State.SilentFOVRadius
-	local useWallCheck = State.SilentWallCheck and not State.WallbangEnabled
 
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr ~= LocalPlayer then
@@ -2170,7 +2078,7 @@ local function updateSilentTarget(mousePos)
 						local sp, onScreen = Camera:WorldToViewportPoint(pointPos)
 						if onScreen and sp.Z > 0 then
 							local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
-							if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, useWallCheck) then
+							if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, State.SilentWallCheck) then
 								bestDist = d
 								bestPart = part
 								bestPos = pointPos + (part.AssemblyLinearVelocity * State.SilentPrediction)
@@ -2207,27 +2115,6 @@ if typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "functi
 					local origin = args[1]
 					local dist = math.max(args[2].Magnitude, (silentTargetPos - origin).Magnitude + 5)
 					args[2] = (silentTargetPos - origin).Unit * dist
-					if State.WallbangEnabled and typeof(args[3]) == "RaycastParams" then
-						local p = args[3]
-						local excl = {}
-						for _, item in ipairs(p.FilterDescendantsInstances) do
-							table.insert(excl, item)
-						end
-						local targetModel = silentTargetPart:FindFirstAncestorOfClass("Model")
-						if targetModel then
-							for _, obj in ipairs(Workspace:GetDescendants()) do
-								if obj:IsA("BasePart") and not obj:IsDescendantOf(targetModel) then
-									local hitWall = Workspace:Raycast(origin, (silentTargetPos - origin).Unit * (silentTargetPos - origin).Magnitude, p)
-									if hitWall and hitWall.Instance then
-										table.insert(excl, hitWall.Instance)
-									else
-										break
-									end
-								end
-							end
-						end
-						p.FilterDescendantsInstances = excl
-					end
 					return oldNamecall(self, unpack(args))
 				end
 			elseif self == Workspace and (method == "FindPartOnRayWithIgnoreList" or method == "FindPartOnRayWithWhitelist" or method == "FindPartOnRay") and typeof(args[1]) == "Ray" then
@@ -2281,8 +2168,6 @@ local function selectTargetPart(char, mousePos)
 end
 
 local function findAimTarget(mousePos)
-	local checkWall = State.WallCheck and not State.WallbangEnabled
-
 	if State.StickyTarget and lockedPart and lockedPart.Parent then
 		local char = lockedPart:FindFirstAncestorOfClass("Model")
 		local alive = getAliveParts(char)
@@ -2293,7 +2178,7 @@ local function findAimTarget(mousePos)
 				local sp, onScreen = Camera:WorldToViewportPoint(lockedPart.Position)
 				if onScreen and sp.Z > 0 then
 					local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
-					if d <= State.FOVRadius * 1.15 and canSeePart(Camera.CFrame.Position, lockedPart, char, checkWall) then
+					if d <= State.FOVRadius * 1.15 and canSeePart(Camera.CFrame.Position, lockedPart, char, State.WallCheck) then
 						return lockedPart
 					end
 				end
@@ -2316,7 +2201,7 @@ local function findAimTarget(mousePos)
 						local sp, onScreen = Camera:WorldToViewportPoint(part.Position)
 						if onScreen and sp.Z > 0 then
 							local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
-							if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, checkWall) then
+							if d <= bestDist and canSeePart(Camera.CFrame.Position, part, plr.Character, State.WallCheck) then
 								bestDist = d
 								best = part
 							end
@@ -2335,7 +2220,6 @@ local function buildActiveSummary()
 	local tags = {}
 	if State.AimEnabled then table.insert(tags, "AIM") end
 	if State.SilentEnabled then table.insert(tags, "SILENT") end
-	if State.WallbangEnabled then table.insert(tags, "WB") end
 	if State.ESPEnabled then table.insert(tags, "ESP") end
 	if State.FlyEnabled then table.insert(tags, "FLY") end
 	if State.NoClipEnabled then table.insert(tags, "NOCLIP") end
@@ -2376,7 +2260,6 @@ RunService.RenderStepped:Connect(function(dt)
 	local vp = Camera.ViewportSize
 
 	updateSilentTarget(mousePos)
-	wallbangHasTarget = State.WallbangEnabled and (silentTargetPart ~= nil or lockedPart ~= nil)
 
 	chHolder.Visible = State.HubReady and State.CrosshairEnabled
 	if chHolder.Visible then
@@ -2392,7 +2275,7 @@ RunService.RenderStepped:Connect(function(dt)
 		chRight.Position = UDim2.new(0.5, gap, 0.5, -1)
 	end
 
-	fovCircle.Visible = State.HubReady and State.FOVEnabled and (State.AimEnabled or State.AutoFireVisible or State.WallbangAutoFire)
+	fovCircle.Visible = State.HubReady and State.FOVEnabled and (State.AimEnabled or State.AutoFireVisible)
 	if fovCircle.Visible then
 		local diam = State.FOVRadius * 2
 		fovCircle.Size = UDim2.new(0, diam, 0, diam)
@@ -2583,11 +2466,9 @@ RunService.RenderStepped:Connect(function(dt)
 		Camera.CameraType = Enum.CameraType.Custom
 	end
 
-	local autoFireActive = State.AutoFireVisible or (State.WallbangEnabled and State.WallbangAutoFire)
-
-	if State.HubReady and (State.AimEnabled or autoFireActive) then
+	if State.HubReady and (State.AimEnabled or State.AutoFireVisible) then
 		local rmb = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-		local activeAim = (not State.AimHoldOnly) or rmb or autoFireActive
+		local activeAim = (not State.AimHoldOnly) or rmb or State.AutoFireVisible
 		local part = activeAim and findAimTarget(mousePos) or nil
 
 		if part then
@@ -2614,7 +2495,7 @@ RunService.RenderStepped:Connect(function(dt)
 				end
 			end
 
-			if autoFireActive and (os.clock() - lastShot) >= State.TriggerDelay then
+			if State.AutoFireVisible and (os.clock() - lastShot) >= State.TriggerDelay then
 				lastShot = os.clock()
 				local tool = myChar and myChar:FindFirstChildOfClass("Tool")
 				if tool then
@@ -2691,7 +2572,7 @@ RunService.RenderStepped:Connect(function(dt)
 						local w = math.max(h * 0.58, 12)
 						local tl = Vector2.new(rootSP.X - w * 0.5, topSP.Y)
 						local sz = Vector2.new(w, h)
-						local col = (silentTargetPlayerName == plr.Name) and Theme.SilentAccent or (wallbangHasTarget and Theme.Success or Theme.AccentBright)
+						local col = (silentTargetPlayerName == plr.Name) and Theme.SilentAccent or Theme.AccentBright
 
 						if State.BoxESP then
 							s.Box.Position = UDim2.new(0, tl.X, 0, tl.Y)
@@ -2791,13 +2672,13 @@ task.spawn(function()
 	loadConfig(State.ConfigProfile, true)
 	task.wait(0.26)
 
-	setSplashProgress(58, "Инициализация Wallbang, Silent Aim и ESP...")
+	setSplashProgress(58, "Синхронизация интерфейса и визуальных слоёв...")
 	applyCompactMode(State.CompactMode)
 	sideBar.Visible = true
 	bodyArea.Visible = true
 	task.wait(0.26)
 
-	setSplashProgress(86, "Подготовка 3D-превью скина и HUD...")
+	setSplashProgress(86, "Подготовка 3D-превью скина и ESP...")
 	if rebuildSkinPreview then
 		rebuildSkinPreview()
 	end
@@ -2839,5 +2720,5 @@ task.spawn(function()
 	end
 
 	setHub(true, false)
-	pushNotify("ASTRAL HUB загружен", "Wallbang готов. Меню: RightShift или Insert")
+	pushNotify("ASTRAL HUB загружен", "Скрыть/открыть меню: RightShift или Insert")
 end)
