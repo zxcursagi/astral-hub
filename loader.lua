@@ -2,7 +2,7 @@
 -- ASTRAL HUB | GitHub Loader
 -- Замени OWNER и REPO на свои данные репозитория
 
-local GITHUB_OWNER = "YOUR_GITHUB_USERNAME"
+local GITHUB_OWNER = "zxcursagi"
 local GITHUB_REPO = "astral-hub"
 local GITHUB_BRANCH = "main"
 local SCRIPT_PATH = "AstralHub.lua"
