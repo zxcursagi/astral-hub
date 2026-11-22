@@ -233,13 +233,13 @@ local function isTeammate(plr, enabled)
 	if not enabled or not plr or plr == LocalPlayer then
 		return false
 	end
+	-- Если у обоих есть Team объект — сравниваем по нему
 	if LocalPlayer.Team and plr.Team then
 		return plr.Team == LocalPlayer.Team
 	end
-	local ok1, ltc = pcall(function() return LocalPlayer.TeamColor end)
-	local ok2, ptc = pcall(function() return plr.TeamColor end)
-	if ok1 and ok2 and ltc and ptc then
-		return tostring(ltc) == tostring(ptc)
+	-- Если хотя бы у одного нет команды — не тиммейты
+	if not LocalPlayer.Team or not plr.Team then
+		return false
 	end
 	return false
 end
