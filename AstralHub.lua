@@ -1,5 +1,5 @@
 --!nocheck
--- ASTRAL HUB v2.4 | GitHub Module | Auto Splash + Smooth Open + Rage Wallbang + Live Team/Enemy Aim Fix
+-- ASTRAL HUB v2.5 | GitHub Module | Fixed ESP & Aimbot + Live Team/Enemy Check + Rage Wallbang
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -238,24 +238,39 @@ local function isTeammate(plr, enabled)
 		return false
 	end
 	if LocalPlayer.Team ~= nil and plr.Team ~= nil then
-		if plr.Team == LocalPlayer.Team then
-			return true
-		end
-	elseif LocalPlayer.TeamColor ~= nil and plr.TeamColor ~= nil then
-		if not plr.TeamColor.Neutral and plr.TeamColor == LocalPlayer.TeamColor then
-			return true
-		end
+		return plr.Team == LocalPlayer.Team
 	end
-	local myChar = LocalPlayer.Character
-	local theirChar = plr.Character
-	if myChar and theirChar then
-		local myTeamAttr = myChar:GetAttribute("Team")
-		local theirTeamAttr = theirChar:GetAttribute("Team")
-		if myTeamAttr ~= nil and theirTeamAttr ~= nil and myTeamAttr == theirTeamAttr then
-			return true
+	if LocalPlayer.TeamColor ~= nil and plr.TeamColor ~= nil then
+		if not LocalPlayer.TeamColor.Neutral and not plr.TeamColor.Neutral then
+			return plr.TeamColor == LocalPlayer.TeamColor
 		end
 	end
 	return false
+end
+
+local function getRootPart(char)
+	if not char then
+		return nil
+	end
+	return char:FindFirstChild("HumanoidRootPart")
+		or char:FindFirstChild("UpperTorso")
+		or char:FindFirstChild("Torso")
+		or char:FindFirstChildWhichIsA("BasePart")
+end
+
+local function getAliveParts(char)
+	if not char or not char.Parent then
+		return false, nil, nil
+	end
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hrp = getRootPart(char)
+	if not hum or not hrp then
+		return false, nil, nil
+	end
+	if hum.Health <= 0 then
+		return false, hum, hrp
+	end
+	return true, hum, hrp
 end
 
 local function addCorner(obj, radius)
@@ -380,7 +395,7 @@ local splashTag = Instance.new("TextLabel")
 splashTag.Size = UDim2.new(1, -32, 0, 20)
 splashTag.Position = UDim2.new(0, 16, 0, 18)
 splashTag.BackgroundTransparency = 1
-splashTag.Text = "✦ ASTRAL HUB  •  v2.4"
+splashTag.Text = "✦ ASTRAL HUB  •  v2.5"
 splashTag.TextColor3 = Theme.AccentBright
 splashTag.Font = Enum.Font.GothamBold
 splashTag.TextSize = 11
@@ -1847,7 +1862,7 @@ local espLayer = Instance.new("Frame")
 espLayer.Name = "AstralESPOverlay"
 espLayer.Size = UDim2.new(1, 0, 1, 0)
 espLayer.BackgroundTransparency = 1
-espLayer.ZIndex = 1
+espLayer.ZIndex = 2
 espLayer.Parent = gui
 
 local espPool = {}
@@ -1857,6 +1872,7 @@ local function makeLine()
 	f.BackgroundColor3 = Theme.AccentBright
 	f.BorderSizePixel = 0
 	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.ZIndex = 2
 	f.Visible = false
 	f.Parent = espLayer
 	return f
@@ -1866,6 +1882,7 @@ local function createESPSet()
 	local box = Instance.new("Frame")
 	box.BackgroundColor3 = Theme.Accent
 	box.BackgroundTransparency = 0.88
+	box.ZIndex = 2
 	box.Visible = false
 	box.Parent = espLayer
 	addStroke(box, Theme.AccentBright, 1.4, 0.1)
@@ -1884,6 +1901,7 @@ local function createESPSet()
 	tag.Font = Enum.Font.GothamBold
 	tag.TextSize = 10
 	tag.TextStrokeTransparency = 0.5
+	tag.ZIndex = 3
 	tag.Visible = false
 	tag.Parent = espLayer
 	addCorner(tag, 5)
@@ -1983,21 +2001,6 @@ local function drawCornerBox(s, topLeft, size, col)
 
 	drawLine(s.C_BR_H, br - Vector2.new(cw, 0), br, t, col)
 	drawLine(s.C_BR_V, br - Vector2.new(0, ch), br, t, col)
-end
-
-local function getAliveParts(char)
-	if not char or not char.Parent then
-		return false, nil, nil
-	end
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hum or not hrp then
-		return false, nil, nil
-	end
-	if hum.Health <= 0 or hum:GetState() == Enum.HumanoidStateType.Dead then
-		return false, hum, hrp
-	end
-	return true, hum, hrp
 end
 
 -- FOV Circles & Wallbang + Silent Aim Hooks
@@ -2106,6 +2109,9 @@ local function measureWallThickness(fromPos, toPos, targetChar)
 end
 
 local function canSeePart(fromPos, targetPart, targetChar, checkWall)
+	if not targetPart then
+		return false
+	end
 	if State.WallbangEnabled then
 		local penetrable = measureWallThickness(fromPos, targetPart.Position, targetChar)
 		return penetrable
@@ -2115,14 +2121,18 @@ local function canSeePart(fromPos, targetPart, targetChar, checkWall)
 	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	local excludeList = { targetChar }
+	local excludeList = {}
 	if LocalPlayer.Character then
 		table.insert(excludeList, LocalPlayer.Character)
+	end
+	if targetChar then
+		table.insert(excludeList, targetChar)
 	end
 	params.FilterDescendantsInstances = excludeList
 	params.IgnoreWater = true
 
-	local res = Workspace:Raycast(fromPos, targetPart.Position - fromPos, params)
+	local dir = targetPart.Position - fromPos
+	local res = Workspace:Raycast(fromPos, dir, params)
 	return res == nil
 end
 
@@ -2144,7 +2154,7 @@ local function getSilentBodyPoint(char, partMode)
 			return head, head.Position - Vector3.new(0, 0.35, 0)
 		end
 	elseif partMode == "Torso" then
-		local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
+		local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or getRootPart(char)
 		if torso then
 			return torso, torso.Position
 		end
@@ -2165,7 +2175,7 @@ local function getSilentBodyPoint(char, partMode)
 			return leg, leg.Position
 		end
 	end
-	local fallback = char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+	local fallback = char:FindFirstChild("Head") or getRootPart(char)
 	return fallback, fallback and fallback.Position or nil
 end
 
@@ -2277,9 +2287,9 @@ end
 
 local function selectTargetPart(char, mousePos)
 	if State.TargetPartMode == "Head" then
-		return char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
+		return char:FindFirstChild("Head") or getRootPart(char)
 	elseif State.TargetPartMode == "HumanoidRootPart" then
-		return char:FindFirstChild("HumanoidRootPart")
+		return getRootPart(char)
 	else
 		local bestPart = nil
 		local bestDist = math.huge
@@ -2295,7 +2305,7 @@ local function selectTargetPart(char, mousePos)
 				end
 			end
 		end
-		return bestPart or char:FindFirstChild("HumanoidRootPart")
+		return bestPart or getRootPart(char)
 	end
 end
 
@@ -2327,7 +2337,16 @@ end
 local function findAimTarget(mousePos)
 	local checkWall = State.WallCheck and not State.WallbangEnabled
 
-	-- Всегда сначала ищем лучшего видимого противника, чтобы обновлять цель при смене видимости/тиммейтов
+	if State.StickyTarget and lockedPart and lockedPart.Parent then
+		local lockedChar = lockedPart:FindFirstAncestorOfClass("Model")
+		local lockedPlr = lockedChar and Players:GetPlayerFromCharacter(lockedChar) or nil
+		local lockedOk = isPartValidForAim(lockedPart, lockedChar, lockedPlr, mousePos, State.FOVRadius * 1.25, checkWall)
+		if lockedOk then
+			return lockedPart
+		end
+		lockedPart = nil
+	end
+
 	local best = nil
 	local bestDist = State.FOVRadius
 
@@ -2339,15 +2358,6 @@ local function findAimTarget(mousePos)
 				bestDist = fovDist
 				best = part
 			end
-		end
-	end
-
-	if State.StickyTarget and lockedPart and lockedPart.Parent then
-		local lockedChar = lockedPart:FindFirstAncestorOfClass("Model")
-		local lockedPlr = lockedChar and Players:GetPlayerFromCharacter(lockedChar) or nil
-		local lockedOk, lockedDist = isPartValidForAim(lockedPart, lockedChar, lockedPlr, mousePos, State.FOVRadius * 1.15, checkWall)
-		if lockedOk and (not best or lockedDist <= bestDist * 1.1) then
-			return lockedPart
 		end
 	end
 
@@ -2675,7 +2685,7 @@ RunService.RenderStepped:Connect(function(dt)
 				local targetHB = (State.HitboxPart == "Head")
 					and plr.Character:FindFirstChild("Head")
 					or hrp
-				if targetHB then
+				if targetHB and targetHB:IsA("BasePart") then
 					if State.HubReady and State.HitboxEnabled and alive and not sameTeamAim then
 						targetHB.Size = Vector3.new(State.HitboxSize, State.HitboxSize, State.HitboxSize)
 						targetHB.Transparency = State.HitboxTransparency
@@ -2684,7 +2694,7 @@ RunService.RenderStepped:Connect(function(dt)
 						if targetHB.Name == "Head" then
 							targetHB.Size = Vector3.new(2, 1, 1)
 							targetHB.Transparency = 0
-						else
+						elseif targetHB.Name == "HumanoidRootPart" then
 							targetHB.Size = Vector3.new(2, 2, 1)
 							targetHB.Transparency = 1
 						end
@@ -2809,7 +2819,7 @@ task.spawn(function()
 	loadConfig(State.ConfigProfile, true)
 	task.wait(0.26)
 
-	setSplashProgress(58, "Обновление проверки команд и видимости...")
+	setSplashProgress(58, "Восстановление ESP и Aimbot...")
 	applyCompactMode(State.CompactMode)
 	sideBar.Visible = true
 	bodyArea.Visible = true
@@ -2857,5 +2867,5 @@ task.spawn(function()
 	end
 
 	setHub(true, false)
-	pushNotify("ASTRAL HUB загружен", "Aimbot и team-check обновлены. Меню: RightShift")
+	pushNotify("ASTRAL HUB загружен", "ESP и Aimbot восстановлены. Меню: RightShift")
 end)
